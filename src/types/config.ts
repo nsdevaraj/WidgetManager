@@ -64,7 +64,7 @@ export const defaultWidgetConfig: Partial<WidgetConfig> = {
   settings: {
     isAlwaysOnTop: false,
     opacity: 1,
-    initialUrl: 'https://www.google.com'
+    initialUrl: 'https://widgets.cursor.sh/welcome.html'
   }
 };
 

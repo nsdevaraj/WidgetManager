@@ -28,7 +28,8 @@ export const WidgetManager: React.FC = () => {
     settings: {
       isAlwaysOnTop: false,
       opacity: 1,
-      customCSS: ''
+      customCSS: '',
+      initialUrl: ''
     }
   });
 
@@ -64,7 +65,8 @@ export const WidgetManager: React.FC = () => {
         settings: {
           isAlwaysOnTop: formData.settings.isAlwaysOnTop,
           opacity: formData.settings.opacity,
-          customCSS: formData.settings.customCSS
+          customCSS: formData.settings.customCSS,
+          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
         }
       });
       setWidgets([...widgets, newWidget]);
@@ -90,7 +92,8 @@ export const WidgetManager: React.FC = () => {
         settings: {
           isAlwaysOnTop: formData.settings.isAlwaysOnTop,
           opacity: formData.settings.opacity,
-          customCSS: formData.settings.customCSS
+          customCSS: formData.settings.customCSS,
+          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
         }
       });
       const updatedWidgets = widgets.map(w => 
@@ -179,7 +182,8 @@ export const WidgetManager: React.FC = () => {
                 settings: {
                   isAlwaysOnTop: false,
                   opacity: 1,
-                  customCSS: ''
+                  customCSS: '',
+                  initialUrl: ''
                 }
               });
               setIsEditing(true);
@@ -340,9 +344,23 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     settings: { ...formData.settings, initialUrl: e.target.value }
                   })}
-                  placeholder="Enter URL (e.g., https://example.com)"
+                  placeholder="Enter URL (e.g., https://widgets.cursor.sh/welcome.html)"
                   disabled={isLoading}
                 />
+                <small className="help-text">
+                  Many websites cannot be embedded due to security restrictions. Here are some URLs you can try:
+                  <ul>
+                    <li><code>https://widgets.cursor.sh/welcome.html</code> - Welcome page</li>
+                    <li><code>https://widgets.cursor.sh/clock.html</code> - Simple clock</li>
+                    <li><code>https://widgets.cursor.sh/weather.html</code> - Weather widget</li>
+                  </ul>
+                  To embed other websites, they must:
+                  <ul>
+                    <li>Allow embedding via Content Security Policy</li>
+                    <li>Not use X-Frame-Options restrictions</li>
+                    <li>Be served over HTTPS</li>
+                  </ul>
+                </small>
               </div>
             )}
 

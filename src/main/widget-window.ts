@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, ipcMain, BrowserView } from 'electron';
 import { WidgetConfig } from '../types/config';
 
 declare const WIDGET_WINDOW_WEBPACK_ENTRY: string;
@@ -7,11 +7,13 @@ declare const WIDGET_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 export class WidgetWindow {
   private window: BrowserWindow;
   private config: WidgetConfig;
+  private browserView: BrowserView | null = null;
 
   constructor(config: WidgetConfig) {
     this.config = config;
     this.window = this.createWindow();
     this.setupWindow();
+    this.setupIPC();
   }
 
   private createWindow(): BrowserWindow {
@@ -72,43 +74,94 @@ export class WidgetWindow {
     });
   }
 
+  private setupIPC() {
+    // Handle widget:get-config request
+    ipcMain.handle('widget:get-config', () => {
+      return this.config;
+    });
+
+    // Clean up IPC handlers when window is closed
+    this.window.on('closed', () => {
+      ipcMain.removeHandler('widget:get-config');
+    });
+
+    // Handle BrowserView creation
+    ipcMain.on('browserView:create', (_, { id, url }) => {
+      if (this.config.id === id) {
+        this.createBrowserView(url);
+      }
+    });
+
+    // Handle BrowserView bounds update
+    ipcMain.on('browserView:setBounds', (_, { id, bounds }) => {
+      if (this.config.id === id && this.browserView) {
+        this.browserView.setBounds(bounds);
+      }
+    });
+
+    // Handle BrowserView destruction
+    ipcMain.on('browserView:destroy', (_, id) => {
+      if (this.config.id === id) {
+        this.destroyBrowserView();
+      }
+    });
+  }
+
+  private createBrowserView(url: string) {
+    // Destroy existing BrowserView if any
+    this.destroyBrowserView();
+
+    // Create new BrowserView
+    this.browserView = new BrowserView({
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        webSecurity: true,
+        allowRunningInsecureContent: false
+      }
+    });
+
+    // Add to window and load URL
+    this.window.addBrowserView(this.browserView);
+    this.browserView.webContents.loadURL(url).catch(err => {
+      console.error('Failed to load URL in BrowserView:', err);
+    });
+  }
+
+  private destroyBrowserView() {
+    if (this.browserView) {
+      this.window.removeBrowserView(this.browserView);
+      this.browserView = null;
+    }
+  }
+
   public updateConfig(updates: Partial<WidgetConfig>) {
     try {
-      // Update position if specified
+      // Update window properties
       if (updates.position) {
-        const x = Number(updates.position.x);
-        const y = Number(updates.position.y);
-        if (isNaN(x) || isNaN(y)) {
-          throw new Error('Invalid position values');
-        }
-        this.window.setPosition(x, y);
+        this.window.setPosition(
+          Math.round(updates.position.x),
+          Math.round(updates.position.y)
+        );
       }
 
-      // Update size if specified
       if (updates.size) {
-        const width = Number(updates.size.width);
-        const height = Number(updates.size.height);
-        if (isNaN(width) || isNaN(height) || width < 50 || height < 50) {
-          throw new Error('Invalid size values');
-        }
-        this.window.setSize(width, height);
+        this.window.setSize(
+          Math.round(updates.size.width),
+          Math.round(updates.size.height)
+        );
       }
 
-      // Update settings if specified
-      if (updates.settings) {
-        if (updates.settings.isAlwaysOnTop !== undefined) {
-          this.window.setAlwaysOnTop(Boolean(updates.settings.isAlwaysOnTop));
-        }
-        if (updates.settings.opacity !== undefined) {
-          const opacity = Number(updates.settings.opacity);
-          if (isNaN(opacity) || opacity < 0.1 || opacity > 1) {
-            throw new Error('Invalid opacity value');
-          }
-          this.window.setOpacity(opacity);
-        }
+      if (updates.settings?.isAlwaysOnTop !== undefined) {
+        this.window.setAlwaysOnTop(updates.settings.isAlwaysOnTop);
       }
 
-      // Update the stored config with validated values
+      if (updates.settings?.opacity !== undefined) {
+        this.window.setOpacity(updates.settings.opacity);
+      }
+
+      // Update the stored config
       this.config = {
         ...this.config,
         ...updates,
@@ -122,15 +175,16 @@ export class WidgetWindow {
         } : this.config.size,
         settings: {
           ...this.config.settings,
-          ...updates.settings,
-          isAlwaysOnTop: updates.settings?.isAlwaysOnTop !== undefined ? 
-            Boolean(updates.settings.isAlwaysOnTop) : 
-            this.config.settings?.isAlwaysOnTop,
-          opacity: updates.settings?.opacity !== undefined ? 
-            Number(updates.settings.opacity) : 
-            this.config.settings?.opacity
+          ...updates.settings
         }
       };
+
+      // Update BrowserView URL if changed
+      if (updates.settings?.initialUrl && this.browserView) {
+        this.browserView.webContents.loadURL(updates.settings.initialUrl).catch(err => {
+          console.error('Failed to update BrowserView URL:', err);
+        });
+      }
     } catch (error) {
       console.error('Error updating widget config:', error);
       throw error;
@@ -142,6 +196,7 @@ export class WidgetWindow {
   }
 
   public dispose(): void {
+    this.destroyBrowserView();
     try {
       if (!this.window.isDestroyed()) {
         this.window.destroy();

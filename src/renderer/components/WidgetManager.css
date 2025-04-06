@@ -332,4 +332,35 @@ textarea:disabled {
 .form-actions .cancel-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.help-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.help-text ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.help-text ul:last-child {
+  margin-bottom: 0;
+}
+
+.help-text li {
+  margin: 0.25rem 0;
+}
+
+.help-text code {
+  font-family: monospace;
+  background-color: var(--hover-color);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: var(--text-color);
 } 

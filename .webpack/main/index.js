@@ -19203,9 +19203,11 @@ exports.WidgetWindow = void 0;
 const electron_1 = __webpack_require__(/*! electron */ "electron");
 class WidgetWindow {
     constructor(config) {
+        this.browserView = null;
         this.config = config;
         this.window = this.createWindow();
         this.setupWindow();
+        this.setupIPC();
     }
     createWindow() {
         var _a, _b;
@@ -19261,52 +19263,89 @@ class WidgetWindow {
             });
         });
     }
+    setupIPC() {
+        // Handle widget:get-config request
+        electron_1.ipcMain.handle('widget:get-config', () => {
+            return this.config;
+        });
+        // Clean up IPC handlers when window is closed
+        this.window.on('closed', () => {
+            electron_1.ipcMain.removeHandler('widget:get-config');
+        });
+        // Handle BrowserView creation
+        electron_1.ipcMain.on('browserView:create', (_, { id, url }) => {
+            if (this.config.id === id) {
+                this.createBrowserView(url);
+            }
+        });
+        // Handle BrowserView bounds update
+        electron_1.ipcMain.on('browserView:setBounds', (_, { id, bounds }) => {
+            if (this.config.id === id && this.browserView) {
+                this.browserView.setBounds(bounds);
+            }
+        });
+        // Handle BrowserView destruction
+        electron_1.ipcMain.on('browserView:destroy', (_, id) => {
+            if (this.config.id === id) {
+                this.destroyBrowserView();
+            }
+        });
+    }
+    createBrowserView(url) {
+        // Destroy existing BrowserView if any
+        this.destroyBrowserView();
+        // Create new BrowserView
+        this.browserView = new electron_1.BrowserView({
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: true,
+                webSecurity: true,
+                allowRunningInsecureContent: false
+            }
+        });
+        // Add to window and load URL
+        this.window.addBrowserView(this.browserView);
+        this.browserView.webContents.loadURL(url).catch(err => {
+            console.error('Failed to load URL in BrowserView:', err);
+        });
+    }
+    destroyBrowserView() {
+        if (this.browserView) {
+            this.window.removeBrowserView(this.browserView);
+            this.browserView = null;
+        }
+    }
     updateConfig(updates) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c;
         try {
-            // Update position if specified
+            // Update window properties
             if (updates.position) {
-                const x = Number(updates.position.x);
-                const y = Number(updates.position.y);
-                if (isNaN(x) || isNaN(y)) {
-                    throw new Error('Invalid position values');
-                }
-                this.window.setPosition(x, y);
+                this.window.setPosition(Math.round(updates.position.x), Math.round(updates.position.y));
             }
-            // Update size if specified
             if (updates.size) {
-                const width = Number(updates.size.width);
-                const height = Number(updates.size.height);
-                if (isNaN(width) || isNaN(height) || width < 50 || height < 50) {
-                    throw new Error('Invalid size values');
-                }
-                this.window.setSize(width, height);
+                this.window.setSize(Math.round(updates.size.width), Math.round(updates.size.height));
             }
-            // Update settings if specified
-            if (updates.settings) {
-                if (updates.settings.isAlwaysOnTop !== undefined) {
-                    this.window.setAlwaysOnTop(Boolean(updates.settings.isAlwaysOnTop));
-                }
-                if (updates.settings.opacity !== undefined) {
-                    const opacity = Number(updates.settings.opacity);
-                    if (isNaN(opacity) || opacity < 0.1 || opacity > 1) {
-                        throw new Error('Invalid opacity value');
-                    }
-                    this.window.setOpacity(opacity);
-                }
+            if (((_a = updates.settings) === null || _a === void 0 ? void 0 : _a.isAlwaysOnTop) !== undefined) {
+                this.window.setAlwaysOnTop(updates.settings.isAlwaysOnTop);
             }
-            // Update the stored config with validated values
+            if (((_b = updates.settings) === null || _b === void 0 ? void 0 : _b.opacity) !== undefined) {
+                this.window.setOpacity(updates.settings.opacity);
+            }
+            // Update the stored config
             this.config = Object.assign(Object.assign(Object.assign({}, this.config), updates), { position: updates.position ? {
                     x: Number(updates.position.x),
                     y: Number(updates.position.y)
                 } : this.config.position, size: updates.size ? {
                     width: Number(updates.size.width),
                     height: Number(updates.size.height)
-                } : this.config.size, settings: Object.assign(Object.assign(Object.assign({}, this.config.settings), updates.settings), { isAlwaysOnTop: ((_a = updates.settings) === null || _a === void 0 ? void 0 : _a.isAlwaysOnTop) !== undefined ?
-                        Boolean(updates.settings.isAlwaysOnTop) :
-                        (_b = this.config.settings) === null || _b === void 0 ? void 0 : _b.isAlwaysOnTop, opacity: ((_c = updates.settings) === null || _c === void 0 ? void 0 : _c.opacity) !== undefined ?
-                        Number(updates.settings.opacity) :
-                        (_d = this.config.settings) === null || _d === void 0 ? void 0 : _d.opacity }) });
+                } : this.config.size, settings: Object.assign(Object.assign({}, this.config.settings), updates.settings) });
+            // Update BrowserView URL if changed
+            if (((_c = updates.settings) === null || _c === void 0 ? void 0 : _c.initialUrl) && this.browserView) {
+                this.browserView.webContents.loadURL(updates.settings.initialUrl).catch(err => {
+                    console.error('Failed to update BrowserView URL:', err);
+                });
+            }
         }
         catch (error) {
             console.error('Error updating widget config:', error);
@@ -19317,6 +19356,7 @@ class WidgetWindow {
         return this.config;
     }
     dispose() {
+        this.destroyBrowserView();
         try {
             if (!this.window.isDestroyed()) {
                 this.window.destroy();
@@ -19581,7 +19621,7 @@ exports.defaultWidgetConfig = {
     settings: {
         isAlwaysOnTop: false,
         opacity: 1,
-        initialUrl: 'https://www.google.com'
+        initialUrl: 'https://widgets.cursor.sh/welcome.html'
     }
 };
 exports.defaultAppSettings = {

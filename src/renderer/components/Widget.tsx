@@ -18,6 +18,32 @@ export const Widget: React.FC<WidgetProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef({ startX: 0, startY: 0 });
   const currentPosition = useRef({ x: config.position.x, y: config.position.y });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (config.type === 'url' && containerRef.current) {
+      // Create BrowserView when component mounts
+      window.api.createBrowserView(config.id, config.settings?.initialUrl || 'about:blank');
+
+      // Cleanup BrowserView when component unmounts
+      return () => {
+        window.api.destroyBrowserView(config.id);
+      };
+    }
+  }, [config.type, config.id]);
+
+  useEffect(() => {
+    if (config.type === 'url' && containerRef.current) {
+      // Update BrowserView bounds when container size/position changes
+      const rect = containerRef.current.getBoundingClientRect();
+      window.api.setBrowserViewBounds(config.id, {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      });
+    }
+  }, [config.position.x, config.position.y, config.size.width, config.size.height]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (standalone) {
@@ -126,17 +152,13 @@ export const Widget: React.FC<WidgetProps> = ({
         {config.type === 'notes' && <div>Notes Widget</div>}
         {config.type === 'calendar' && <div>Calendar Widget</div>}
         {config.type === 'url' && (
-          <iframe
-            src={config.settings?.initialUrl || 'about:blank'}
+          <div 
+            ref={containerRef}
             style={{
               width: '100%',
               height: 'calc(100% - 36px)', // Subtract header height
-              border: 'none',
               borderRadius: '0 0 8px 8px'
             }}
-            title="URL Widget"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
-            allow="fullscreen; geolocation; microphone; camera"
           />
         )}
       </div>
