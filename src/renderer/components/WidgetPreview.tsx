@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { WidgetConfig, WidgetType } from '../../types/config';
+import { ClockWidget } from './widgets/ClockWidget';
+import { WeatherWidget } from './widgets/WeatherWidget';
+import { NotesWidget } from './widgets/NotesWidget';
+import { CalendarWidget } from './widgets/CalendarWidget';
 import './WidgetPreview.css';
 
 interface WidgetPreviewProps {
@@ -16,41 +20,13 @@ interface WidgetPreviewProps {
 const getWidgetPreviewContent = (type: WidgetType, settings: WidgetPreviewProps['settings']) => {
   switch (type) {
     case 'clock':
-      return (
-        <div className="clock-preview">
-          <span>{new Date().toLocaleTimeString()}</span>
-        </div>
-      );
+      return <ClockWidget />;
     case 'weather':
-      return (
-        <div className="weather-preview">
-          <span>🌤️</span>
-          <span>72°F</span>
-          <span>Sunny</span>
-        </div>
-      );
+      return <WeatherWidget />;
     case 'notes':
-      return (
-        <div className="notes-preview">
-          <div className="note-header">Quick Notes</div>
-          <div className="note-content">Type your notes here...</div>
-        </div>
-      );
+      return <NotesWidget />;
     case 'calendar':
-      return (
-        <div className="calendar-preview">
-          <div className="calendar-header">
-            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </div>
-          <div className="calendar-grid">
-            {Array.from({ length: 31 }, (_, i) => (
-              <div key={i} className={`calendar-day ${i + 1 === new Date().getDate() ? 'today' : ''}`}>
-                {i + 1}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
+      return <CalendarWidget />;
     case 'url':
       return (
         <div className="url-preview">

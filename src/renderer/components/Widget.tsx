@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
 import './Widget.css';
+import { ClockWidget } from './widgets/ClockWidget';
+import { WeatherWidget } from './widgets/WeatherWidget';
+import { NotesWidget } from './widgets/NotesWidget';
+import { CalendarWidget } from './widgets/CalendarWidget';
 
 interface WidgetProps {
   config: WidgetConfig;
@@ -179,10 +183,10 @@ export const Widget: React.FC<WidgetProps> = ({
         <span className="widget-title">{config.type}</span>
       </div>
       <div className="widget-content">
-        {config.type === 'clock' && <div>Clock Widget</div>}
-        {config.type === 'weather' && <div>Weather Widget</div>}
-        {config.type === 'notes' && <div>Notes Widget</div>}
-        {config.type === 'calendar' && <div>Calendar Widget</div>}
+        {config.type === 'clock' && <ClockWidget />}
+        {config.type === 'weather' && <WeatherWidget />}
+        {config.type === 'notes' && <NotesWidget />}
+        {config.type === 'calendar' && <CalendarWidget />}
         {config.type === 'url' && (
           <div 
             ref={containerRef}
