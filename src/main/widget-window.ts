@@ -58,18 +58,11 @@ export class WidgetWindow {
     });
 
     // Handle window move events
-    let moveTimeout: NodeJS.Timeout | null = null;
     this.window.on('move', () => {
-      // Debounce the position update to avoid excessive updates
-      if (moveTimeout) {
-        clearTimeout(moveTimeout);
-      }
-      moveTimeout = setTimeout(() => {
-        const [x, y] = this.window.getPosition();
-        this.updateConfig({
-          position: { x, y }
-        });
-      }, 100);
+      const [x, y] = this.window.getPosition();
+      this.updateConfig({
+        position: { x, y }
+      });
     });
   }
 

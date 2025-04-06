@@ -141,6 +141,8 @@ export class WindowManager {
       const win = this.ensureWindow();
       if (!win.isDestroyed()) {
         win.setPosition(x, y);
+        // Trigger the move event to update the widget's configuration
+        win.emit('move');
       }
     } catch (error) {
       console.error('Failed to handle window drag:', error);

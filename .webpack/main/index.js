@@ -19248,18 +19248,11 @@ class WidgetWindow {
             this.dispose();
         });
         // Handle window move events
-        let moveTimeout = null;
         this.window.on('move', () => {
-            // Debounce the position update to avoid excessive updates
-            if (moveTimeout) {
-                clearTimeout(moveTimeout);
-            }
-            moveTimeout = setTimeout(() => {
-                const [x, y] = this.window.getPosition();
-                this.updateConfig({
-                    position: { x, y }
-                });
-            }, 100);
+            const [x, y] = this.window.getPosition();
+            this.updateConfig({
+                position: { x, y }
+            });
         });
     }
     updateConfig(updates) {
@@ -19477,6 +19470,8 @@ class WindowManager {
             const win = this.ensureWindow();
             if (!win.isDestroyed()) {
                 win.setPosition(x, y);
+                // Trigger the move event to update the widget's configuration
+                win.emit('move');
             }
         }
         catch (error) {

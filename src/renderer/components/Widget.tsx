@@ -17,10 +17,18 @@ export const Widget: React.FC<WidgetProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef({ startX: 0, startY: 0 });
+  const currentPosition = useRef({ x: config.position.x, y: config.position.y });
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (standalone) {
+      e.preventDefault();
+      dragState.current = {
+        startX: e.clientX,
+        startY: e.clientY
+      };
+      currentPosition.current = { x: config.position.x, y: config.position.y };
       window.api.onStartDrag();
+      setIsDragging(true);
       return;
     }
     
@@ -29,23 +37,40 @@ export const Widget: React.FC<WidgetProps> = ({
       startX: e.clientX - config.position.x,
       startY: e.clientY - config.position.y
     };
+    currentPosition.current = { x: config.position.x, y: config.position.y };
     setIsDragging(true);
   };
 
   useEffect(() => {
-    if (!isDragging || standalone) return;
+    if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (standalone) {
+        const deltaX = e.clientX - dragState.current.startX;
+        const deltaY = e.clientY - dragState.current.startY;
+        const newPosition = {
+          x: currentPosition.current.x + deltaX,
+          y: currentPosition.current.y + deltaY
+        };
+        window.api.onMouseMove(newPosition.x, newPosition.y);
+        return;
+      }
+
       const position: Position = {
         x: e.clientX - dragState.current.startX,
         y: e.clientY - dragState.current.startY
       };
+      currentPosition.current = position;
       onPositionChange?.(position);
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      onDragEnd?.({ x: config.position.x, y: config.position.y });
+      if (standalone) {
+        window.api.onMouseUp();
+      } else {
+        onDragEnd?.(currentPosition.current);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -55,7 +80,7 @@ export const Widget: React.FC<WidgetProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, standalone, config.position, onPositionChange, onDragEnd]);
+  }, [isDragging, standalone, onPositionChange, onDragEnd]);
 
   const style: React.CSSProperties = standalone ? {
     width: '100%',
