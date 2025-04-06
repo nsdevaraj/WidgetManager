@@ -5,6 +5,10 @@ import { ScreenManager, initializeScreenManagement } from './screen-manager';
 import { WidgetManager, initializeWidgetManagement } from './widget-manager';
 import { SettingsManager, initializeSettingsManagement } from './settings-manager';
 import { initializeIpcHandlers } from './ipc';
+import { analyticsService } from './services/analytics/analytics-service';
+import { onboardingService } from './services/onboarding/onboarding-service';
+import { licenseService } from './services/licensing/license-service';
+import { registerIpcHandlers } from './services/ipc-handlers';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -116,6 +120,12 @@ export const createWindow = (): BrowserWindow => {
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
   try {
+    // Initialize services first
+    analyticsService.trackEvent('app_started', {
+      version: app.getVersion(),
+      platform: process.platform,
+    });
+
     // Initialize managers
     widgetManager = await initializeWidgetManagement();
     settingsManager = await initializeSettingsManagement();
@@ -123,12 +133,29 @@ app.whenReady().then(async () => {
     // Initialize IPC handlers after managers are ready
     if (!ipcHandlersInitialized) {
       initializeIpcHandlers();
+      registerIpcHandlers(); // Register our new service handlers
       ipcHandlersInitialized = true;
     }
 
-    createWindow();
+    // Create main window
+    const mainWindow = createWindow();
+
+    // Check and show onboarding if needed
+    await onboardingService.checkAndShowOnboarding();
+
+    // Check license status
+    const licenseInfo = await licenseService.getLicenseInfo();
+    if (!licenseInfo.isValid) {
+      analyticsService.trackEvent('license_check_failed', {
+        type: licenseInfo.type,
+        days_remaining: licenseInfo.daysRemaining,
+      });
+    }
   } catch (error) {
     console.error('Failed to initialize application:', error);
+    analyticsService.captureError(error as Error, {
+      context: 'app_initialization',
+    });
     app.quit();
   }
 
@@ -151,6 +178,12 @@ app.on('before-quit', () => {
     settingsManager.dispose();
     settingsManager = null;
   }
+  
+  // Track app quit event
+  analyticsService.trackEvent('app_quit', {
+    version: app.getVersion(),
+    uptime: process.uptime(),
+  });
 });
 
 // Quit when all windows are closed, except on macOS
