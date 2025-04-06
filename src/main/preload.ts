@@ -4,9 +4,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IElectronAPI } from '../types/window';
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('api', {
+// Create the API object
+const api = {
   // Widget management
   listWidgets: () => ipcRenderer.invoke('widget:list'),
   addWidget: (config: any) => ipcRenderer.invoke('widget:add', config),
@@ -38,4 +37,7 @@ contextBridge.exposeInMainWorld('api', {
   onMouseMove: (x: number, y: number) => 
     ipcRenderer.send('window:mouse-move', { x, y }),
   onMouseUp: () => ipcRenderer.send('window:mouse-up')
-} as IElectronAPI);
+};
+
+// Expose the API to the renderer process
+contextBridge.exposeInMainWorld('api', api);
