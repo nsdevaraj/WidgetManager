@@ -3,6 +3,11 @@
   --background-color: #f8fafc;
   --text-color: #1e293b;
   --border-radius: 8px;
+  --window-chrome-height: 32px;
+  --window-control-hover: rgba(0, 0, 0, 0.1);
+  --window-control-active: rgba(0, 0, 0, 0.2);
+  --close-hover: #dc2626;
+  --close-active: #b91c1c;
 }
 
 body {
@@ -15,12 +20,81 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--background-color);
   color: var(--text-color);
+  /* Make the window draggable from anywhere */
+  -webkit-app-region: drag;
+}
+
+/* Make interactive elements not draggable */
+button, input, select, [role="button"] {
+  -webkit-app-region: no-drag;
 }
 
 .app {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  padding-top: calc(2rem + var(--window-chrome-height));
+}
+
+/* Window Chrome Styles */
+.window-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--window-chrome-height);
+  background-color: var(--background-color);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.window-chrome-drag-region {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 88px; /* Width of the control buttons */
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+.window-chrome-controls {
+  display: flex;
+  height: 100%;
+}
+
+.window-control {
+  width: 44px;
+  height: 100%;
+  border: none;
+  background: none;
+  outline: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.window-control:hover {
+  background-color: var(--window-control-hover);
+}
+
+.window-control:active {
+  background-color: var(--window-control-active);
+}
+
+.window-control.close:hover {
+  background-color: var(--close-hover);
+  color: white;
+}
+
+.window-control.close:active {
+  background-color: var(--close-active);
 }
 
 h1 {
