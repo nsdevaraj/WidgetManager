@@ -1,0 +1,129 @@
+.widget-context-menu {
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 240px;
+  color: white;
+  font-size: 13px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.menu-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 0;
+}
+
+.menu-section:last-child {
+  border-bottom: none;
+}
+
+.menu-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0 8px 4px;
+  letter-spacing: 0.5px;
+}
+
+.menu-item {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.menu-item .shortcut {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  margin-left: 16px;
+}
+
+.menu-item .active-indicator {
+  color: #4CAF50;
+  margin-left: 8px;
+}
+
+.menu-item-group {
+  padding: 8px;
+}
+
+.menu-item-group input[type="range"] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.menu-item-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.menu-item-group input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.opacity-presets {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.opacity-preset {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 3px;
+  color: white;
+  padding: 2px 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.opacity-preset:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.quick-opacity {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.quick-opacity .menu-item {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.menu-section.info {
+  background: rgba(255, 255, 255, 0.05);
+  margin: 0 -8px -8px;
+  padding: 8px;
+  border-radius: 0 0 8px 8px;
+}
+
+.menu-section.info .menu-item {
+  cursor: default;
+  padding: 2px 0;
+}
+
+.menu-section.info .menu-item:hover {
+  background: none;
+} 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
+import { WidgetContextMenu } from './WidgetContextMenu';
 import './Widget.css';
 import { ClockWidget } from './widgets/ClockWidget';
 import { WeatherWidget } from './widgets/WeatherWidget';
@@ -22,6 +23,8 @@ export const Widget: React.FC<WidgetProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [showOpacityControl, setShowOpacityControl] = useState(false);
   const [showOpacityFeedback, setShowOpacityFeedback] = useState(false);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const opacityFeedbackTimer = useRef<NodeJS.Timeout>();
   const dragState = useRef({ startX: 0, startY: 0 });
   const currentPosition = useRef({ x: config.position.x, y: config.position.y });
@@ -52,6 +55,16 @@ export const Widget: React.FC<WidgetProps> = ({
     }
   }, [config.position.x, config.position.y, config.size.width, config.size.height]);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
+  };
+
+  const handleCloseContextMenu = () => {
+    setShowContextMenu(false);
+  };
+
   const handleOpacityChange = (newOpacity: number) => {
     window.api.updateWidget(config.id, {
       settings: { ...config.settings, opacity: newOpacity }
@@ -65,6 +78,24 @@ export const Widget: React.FC<WidgetProps> = ({
     opacityFeedbackTimer.current = setTimeout(() => {
       setShowOpacityFeedback(false);
     }, 1500);
+  };
+
+  const handleToggleAlwaysOnTop = () => {
+    window.api.updateWidget(config.id, {
+      settings: {
+        ...config.settings,
+        isAlwaysOnTop: !(config.settings?.isAlwaysOnTop ?? false)
+      }
+    });
+  };
+
+  const handleZIndexChange = (change: number) => {
+    window.api.updateWidget(config.id, {
+      settings: {
+        ...config.settings,
+        zIndex: Math.max(0, (config.settings?.zIndex ?? 0) + change)
+      }
+    });
   };
 
   // Handle opacity keyboard shortcuts
@@ -263,119 +294,120 @@ export const Widget: React.FC<WidgetProps> = ({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={`widget ${config.type} ${isDragging ? 'dragging' : ''} ${standalone ? 'standalone' : ''}`}
-      style={style}
-      onMouseDown={handleMouseDown}
-    >
-      <div className="widget-header">
-        <h3 className="widget-title">{config.type}</h3>
-        <div className="widget-controls">
-          <div 
-            className="opacity-control-container"
-            onMouseEnter={() => setShowOpacityControl(true)}
-            onMouseLeave={() => setShowOpacityControl(false)}
-          >
-            <button className="opacity-button" title="Adjust Opacity">
-              {Math.round((config.settings?.opacity ?? 1) * 100)}%
-            </button>
-            {showOpacityControl && (
-              <div className="opacity-slider-container">
-                <input
-                  type="range"
-                  min="0.1"
-                  max="1"
-                  step="0.1"
-                  value={config.settings?.opacity ?? 1}
-                  onChange={(e) => handleOpacityChange(Number(e.target.value))}
-                />
-                <div className="opacity-presets">
-                  {[0.2, 0.4, 0.6, 0.8, 1].map(value => (
-                    <button
-                      key={value}
-                      className="opacity-preset"
-                      onClick={() => handleOpacityChange(value)}
-                    >
-                      {value * 100}%
-                    </button>
-                  ))}
+    <>
+      <div
+        ref={containerRef}
+        className={`widget ${config.type} ${isDragging ? 'dragging' : ''} ${standalone ? 'standalone' : ''}`}
+        style={style}
+        onMouseDown={handleMouseDown}
+        onContextMenu={handleContextMenu}
+      >
+        <div className="widget-header">
+          <h3 className="widget-title">{config.type}</h3>
+          <div className="widget-controls">
+            <div 
+              className="opacity-control-container"
+              onMouseEnter={() => setShowOpacityControl(true)}
+              onMouseLeave={() => setShowOpacityControl(false)}
+            >
+              <button className="opacity-button" title="Adjust Opacity">
+                {Math.round((config.settings?.opacity ?? 1) * 100)}%
+              </button>
+              {showOpacityControl && (
+                <div className="opacity-slider-container">
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                    value={config.settings?.opacity ?? 1}
+                    onChange={(e) => handleOpacityChange(Number(e.target.value))}
+                  />
+                  <div className="opacity-presets">
+                    {[0.2, 0.4, 0.6, 0.8, 1].map(value => (
+                      <button
+                        key={value}
+                        className="opacity-preset"
+                        onClick={() => handleOpacityChange(value)}
+                      >
+                        {value * 100}%
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-          <button 
-            className={`always-on-top-button ${config.settings?.isAlwaysOnTop ? 'active' : ''}`}
-            onClick={() => window.api.updateWidget(config.id, {
-              settings: { 
-                ...config.settings, 
-                isAlwaysOnTop: !(config.settings?.isAlwaysOnTop ?? false) 
-              }
-            })}
-            title={`${config.settings?.isAlwaysOnTop ? 'Disable' : 'Enable'} Always on Top (Alt + T)`}
-          >
-            📌
-          </button>
-          <div className="z-index-controls">
+              )}
+            </div>
             <button 
-              className="z-index-button"
-              onClick={() => window.api.updateWidget(config.id, {
-                settings: { 
-                  ...config.settings, 
-                  zIndex: ((config.settings?.zIndex ?? 0) + 1) 
-                }
-              })}
-              title="Bring Forward (Alt + ])"
+              className={`always-on-top-button ${config.settings?.isAlwaysOnTop ? 'active' : ''}`}
+              onClick={handleToggleAlwaysOnTop}
+              title={`${config.settings?.isAlwaysOnTop ? 'Disable' : 'Enable'} Always on Top (Alt + T)`}
             >
-              ⬆️
+              📌
             </button>
-            <button 
-              className="z-index-button"
-              onClick={() => window.api.updateWidget(config.id, {
-                settings: { 
-                  ...config.settings, 
-                  zIndex: Math.max(0, (config.settings?.zIndex ?? 0) - 1) 
-                }
-              })}
-              title="Send Backward (Alt + [)"
-            >
-              ⬇️
-            </button>
+            <div className="z-index-controls">
+              <button 
+                className="z-index-button"
+                onClick={() => handleZIndexChange(1)}
+                title="Bring Forward (Alt + ])"
+              >
+                ⬆️
+              </button>
+              <button 
+                className="z-index-button"
+                onClick={() => handleZIndexChange(-1)}
+                title="Send Backward (Alt + [)"
+              >
+                ⬇️
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      {showOpacityFeedback && (
-        <div className="opacity-feedback">
-          Opacity: {Math.round((config.settings?.opacity ?? 1) * 100)}%
+        {showOpacityFeedback && (
+          <div className="opacity-feedback">
+            Opacity: {Math.round((config.settings?.opacity ?? 1) * 100)}%
+          </div>
+        )}
+        <div className="widget-content">
+          {config.type === 'clock' && <ClockWidget />}
+          {config.type === 'weather' && <WeatherWidget />}
+          {config.type === 'notes' && <NotesWidget />}
+          {config.type === 'calendar' && <CalendarWidget />}
+          {config.type === 'url' && (
+            <div 
+              ref={containerRef}
+              style={{
+                width: '100%',
+                height: 'calc(100% - 36px)', // Subtract header height
+                borderRadius: '0 0 8px 8px'
+              }}
+            />
+          )}
         </div>
-      )}
-      <div className="widget-content">
-        {config.type === 'clock' && <ClockWidget />}
-        {config.type === 'weather' && <WeatherWidget />}
-        {config.type === 'notes' && <NotesWidget />}
-        {config.type === 'calendar' && <CalendarWidget />}
-        {config.type === 'url' && (
+        {!standalone && (
           <div 
-            ref={containerRef}
-            style={{
-              width: '100%',
-              height: 'calc(100% - 36px)', // Subtract header height
-              borderRadius: '0 0 8px 8px'
-            }}
-          />
+            className="widget-drag-handle" 
+            onMouseDown={handleMouseDown}
+            title="Drag to move"
+          >
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 18h8v-2H8v2zm0-4h8v-2H8v2zm0-4h8V8H8v2zm0-4h8V4H8v2z"/>
+            </svg>
+          </div>
         )}
       </div>
-      {!standalone && (
-        <div 
-          className="widget-drag-handle" 
-          onMouseDown={handleMouseDown}
-          title="Drag to move"
-        >
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 18h8v-2H8v2zm0-4h8v-2H8v2zm0-4h8V8H8v2zm0-4h8V4H8v2z"/>
-          </svg>
-        </div>
+      {showContextMenu && (
+        <WidgetContextMenu
+          x={contextMenuPosition.x}
+          y={contextMenuPosition.y}
+          onClose={handleCloseContextMenu}
+          onOpacityChange={handleOpacityChange}
+          onToggleAlwaysOnTop={handleToggleAlwaysOnTop}
+          onZIndexChange={handleZIndexChange}
+          currentOpacity={config.settings?.opacity ?? 1}
+          isAlwaysOnTop={config.settings?.isAlwaysOnTop ?? false}
+          currentZIndex={config.settings?.zIndex ?? 0}
+        />
       )}
-    </div>
+    </>
   );
 }; 
