@@ -24,6 +24,10 @@ node_modules/
 # OS specific
 .DS_Store
 
-# Task files
-tasks.json
-tasks/ 
+out/
+.webpack/arm64
+.webpack/x64
+.webpack/ia32
+.webpack/arm64-arm64
+.webpack/x64-x64
+.webpack/ia32-ia32

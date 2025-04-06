@@ -1,0 +1,83 @@
+# Task ID: 7
+# Title: Add Advanced Widget Controls
+# Status: done
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Implement transparency, z-index, and always-on-top controls for widgets.
+# Details:
+1. Add opacity/transparency controls to widget windows
+2. Implement always-on-top toggle functionality
+3. Create z-index management system
+4. Add context menu with quick access to controls
+5. Implement keyboard shortcuts for common actions
+6. Create visual indicators for special states
+7. Add custom CSS injection capability
+8. Implement widget focus/blur handling
+
+# Test Strategy:
+Test each control individually and in combination. Verify visual appearance with different settings. Ensure context menu and keyboard shortcuts work correctly. Test focus behavior.
+
+# Subtasks:
+## 1. Implement opacity and transparency controls for widgets [done]
+### Dependencies: None
+### Description: Add UI controls and backend functionality to adjust widget transparency levels
+### Details:
+Implementation steps:
+1. Create a slider component for opacity control (0-100%)
+2. Add the slider to widget settings panel
+3. Implement event handlers to capture opacity changes
+4. Create a function to apply opacity changes to widget DOM elements
+5. Update widget state to store opacity value
+6. Add a reset-to-default button
+7. Ensure opacity persists when widget is closed/reopened
+
+Testing approach:
+- Test slider UI renders correctly
+- Verify opacity changes are applied in real-time
+- Test persistence of opacity settings
+- Check compatibility across different browsers
+- Verify performance with multiple widgets at different opacity levels
+
+## 2. Add z-index management system and always-on-top functionality [done]
+### Dependencies: 7.1
+### Description: Implement a system to control widget layering and provide always-on-top toggle capability
+### Details:
+Implementation steps:
+1. Create a z-index manager service to track all widget z-indices
+2. Implement functions to bring widgets forward/backward in the stack
+3. Add an always-on-top toggle button in widget header
+4. Create event listeners for the toggle button
+5. Modify widget container to maintain highest z-index when always-on-top is enabled
+6. Add visual indicator for widgets in always-on-top mode
+7. Handle conflicts when multiple widgets are set to always-on-top
+8. Implement widget focus/blur handling to manage z-index automatically
+
+Testing approach:
+- Test z-index changes when clicking between multiple widgets
+- Verify always-on-top widgets remain above regular widgets
+- Test z-index behavior when opening new widgets
+- Check visual indicators display correctly
+- Test focus/blur handling works as expected
+
+## 3. Create context menu and keyboard shortcuts for widget controls [done]
+### Dependencies: 7.1, 7.2
+### Description: Implement a right-click context menu and keyboard shortcuts for quick access to widget controls
+### Details:
+Implementation steps:
+1. Design and implement a context menu component for widgets
+2. Add menu items for transparency control, z-index adjustment, and always-on-top toggle
+3. Implement right-click event handler to show the context menu
+4. Create keyboard shortcut manager for widget controls
+5. Define shortcuts for common actions (Ctrl+T for transparency, Ctrl+F for bring to front, etc.)
+6. Add keyboard event listeners to widget container
+7. Implement custom CSS injection option in the context menu
+8. Add visual tooltips showing available keyboard shortcuts
+
+Testing approach:
+- Verify context menu appears on right-click and contains all options
+- Test all menu items function correctly
+- Ensure keyboard shortcuts work as expected
+- Test custom CSS injection functionality
+- Check accessibility of context menu and keyboard controls
+- Verify tooltips display correctly
+

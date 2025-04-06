@@ -1,0 +1,77 @@
+# Task ID: 1
+# Title: Setup Electron Project Structure
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Initialize the Electron project with React, TypeScript, and electron-store, setting up the main process and renderer processes architecture.
+# Details:
+1. Create new project using Electron Forge with TypeScript template
+2. Add React 18+ and TypeScript 5+ dependencies
+3. Configure webpack for React support
+4. Set up folder structure (main, renderer, common)
+5. Configure electron-store for persistence
+6. Implement basic IPC communication between processes
+7. Create initial system tray integration
+8. Set up development environment with hot reload
+
+# Test Strategy:
+Verify project builds and runs without errors. Test IPC communication between main and renderer processes. Ensure system tray appears correctly.
+
+# Subtasks:
+## 1. Initialize Electron project with TypeScript and setup folder structure [done]
+### Dependencies: None
+### Description: Create a new Electron project using Electron Forge with TypeScript template and establish the basic folder structure for the application architecture.
+### Details:
+1. Install Electron Forge CLI globally: `npm install -g @electron-forge/cli`
+2. Create new project: `electron-forge init my-app --template=typescript`
+3. Navigate to project directory: `cd my-app`
+4. Set up folder structure:
+   - `/src/main` - Main process code
+   - `/src/renderer` - Renderer process code
+   - `/src/common` - Shared code between processes
+5. Move existing TypeScript configuration and main process code to appropriate folders
+6. Update tsconfig.json to include path aliases for the new folder structure
+7. Update package.json scripts to reflect the new structure
+8. Test by running `npm start` to verify the basic Electron app launches
+9. Commit the initial project structure
+
+## 2. Integrate React with TypeScript and configure webpack [done]
+### Dependencies: 1.1
+### Description: Add React to the project, configure webpack for React support, and implement hot reload for development.
+### Details:
+1. Install React dependencies: `npm install react react-dom @types/react @types/react-dom`
+2. Install webpack and related dependencies: `npm install --save-dev webpack webpack-cli webpack-dev-server html-webpack-plugin ts-loader css-loader style-loader file-loader`
+3. Create webpack.config.js in project root with configuration for React and TypeScript
+4. Create a basic React component in `/src/renderer/App.tsx`
+5. Create an HTML template in `/src/renderer/index.html`
+6. Update main process code to load the webpack-built renderer
+7. Configure hot reload by:
+   - Installing `electron-reloader` as dev dependency
+   - Adding hot reload configuration to main process
+8. Update package.json scripts to include webpack build and dev server
+9. Test the setup by running dev script and verifying React components render
+10. Verify hot reload is working by making changes to React components
+
+## 3. Implement electron-store and IPC communication with system tray integration [done]
+### Dependencies: 1.1, 1.2
+### Description: Set up data persistence with electron-store, establish IPC communication between main and renderer processes, and create the system tray integration.
+### Details:
+1. Install electron-store: `npm install electron-store`
+2. Create a store configuration in `/src/main/store.ts`:
+   - Define types for stored data
+   - Initialize electron-store with appropriate options
+   - Export store instance
+3. Implement IPC communication:
+   - Define IPC channel constants in `/src/common/ipc.ts`
+   - Create main process handlers in `/src/main/ipc.ts` to handle renderer requests
+   - Implement renderer process IPC client in `/src/renderer/utils/ipc.ts`
+4. Add system tray integration:
+   - Create tray icon assets in `/assets` folder
+   - Implement tray module in `/src/main/tray.ts`
+   - Add context menu to tray with basic actions
+   - Connect tray actions to main process functions
+5. Test persistence by saving and retrieving data
+6. Test IPC by sending messages between processes
+7. Test system tray by verifying icon appears and context menu works
+8. Add error handling for all implemented features
+

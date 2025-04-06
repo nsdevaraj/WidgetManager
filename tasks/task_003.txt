@@ -1,0 +1,60 @@
+# Task ID: 3
+# Title: Create Basic Widget Window
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the core frameless, resizable window that can display web content.
+# Details:
+1. Create BrowserWindow with frameless configuration
+2. Implement custom window chrome/controls
+3. Add WebView component for content display
+4. Configure proper content isolation and sandboxing
+5. Implement basic error handling for content loading
+6. Add resize functionality with proper constraints
+7. Create window position tracking
+8. Implement basic content refresh functionality
+
+# Test Strategy:
+Test window creation with various URLs. Verify resize functionality works correctly. Confirm content loads properly and is sandboxed. Test error handling with invalid URLs.
+
+# Subtasks:
+## 1. Implement Frameless BrowserWindow with Web Content Display [done]
+### Dependencies: None
+### Description: Create the core frameless window using Electron's BrowserWindow API and configure WebView for displaying web content with proper security settings.
+### Details:
+1. Initialize a new BrowserWindow with frameless configuration (frame: false)
+2. Configure proper content isolation settings in webPreferences (contextIsolation: true, sandbox: true)
+3. Set up a preload script for secure communication between renderer and main processes
+4. Implement the WebView component for content display
+5. Configure content security policy (CSP) headers
+6. Add basic error handling for content loading failures
+7. Test the window creation and content loading with various URLs
+8. Verify security settings using Electron's security checklist
+
+## 2. Implement Custom Window Chrome and Controls [done]
+### Dependencies: 3.1
+### Description: Create a custom window frame with minimize, maximize, and close buttons to replace the native window controls removed in the frameless configuration.
+### Details:
+1. Design a custom title bar component that matches application styling
+2. Implement minimize, maximize/restore, and close buttons with appropriate icons
+3. Connect button actions to the corresponding BrowserWindow methods (minimize(), maximize(), close())
+4. Add window dragging functionality by handling mousedown/mousemove events on the title bar
+5. Implement double-click to maximize/restore on the title bar
+6. Add visual feedback for button hover and active states
+7. Test window controls across different operating systems
+8. Ensure keyboard shortcuts (Alt+F4, etc.) still work properly
+
+## 3. Implement Window Resizing and Position Management [done]
+### Dependencies: 3.1, 3.2
+### Description: Add resize functionality with proper constraints and implement window position tracking to maintain state between sessions.
+### Details:
+1. Create resize handles on window edges and corners using CSS and JavaScript
+2. Implement resize logic by tracking mousedown/mousemove events on resize handles
+3. Add minimum and maximum size constraints to prevent unusable window sizes
+4. Implement window position tracking by saving coordinates on window move and close events
+5. Store window position and size in application settings using electron-store or similar
+6. Restore previous window position and size on application restart
+7. Add logic to ensure window is always visible on screen (handle multi-monitor setups)
+8. Test resizing behavior with different content types and window states
+9. Implement graceful fallback if saved position is invalid (e.g., monitor no longer available)
+

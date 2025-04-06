@@ -1,0 +1,72 @@
+# Task ID: 4
+# Title: Implement Drag-and-Drop Positioning
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Add the ability to drag widgets around the desktop and persist their positions.
+# Details:
+1. Create custom drag regions on widget windows
+2. Implement mouse event handlers for drag operations
+3. Add position boundary checking for multi-monitor support
+4. Create position persistence logic to save locations
+5. Implement drag start/in-progress/end visual feedback
+6. Add position reset functionality
+7. Ensure smooth dragging performance
+8. Handle edge cases like screen resolution changes
+
+# Test Strategy:
+Test dragging widgets across the screen and between monitors. Verify position persistence after application restart. Test boundary conditions and edge cases.
+
+# Subtasks:
+## 1. Implement Widget Drag Detection and Movement [done]
+### Dependencies: None
+### Description: Create the core drag functionality that allows users to click and drag widgets across the desktop. This includes setting up custom drag regions, implementing mouse event handlers, and ensuring smooth movement.
+### Details:
+1. Define custom drag regions on widget headers/title bars using mouse event listeners (mousedown, mousemove, mouseup).
+2. Implement a dragging state manager that tracks when dragging begins, continues, and ends.
+3. Calculate position delta between mouse movements to update widget positions.
+4. Add visual feedback during dragging (e.g., cursor change, slight opacity change, or shadow effect).
+5. Implement throttling or requestAnimationFrame for smooth performance during drag operations.
+6. Add event propagation control to prevent unintended interactions with widget content during dragging.
+
+Testing approach:
+- Unit test the drag state transitions and position calculations
+- Manual testing with different mouse movement speeds
+- Performance testing to ensure smooth dragging even with multiple widgets
+
+## 2. Add Position Constraints and Multi-Monitor Support [done]
+### Dependencies: 4.1
+### Description: Implement boundary checking to ensure widgets remain accessible within the visible desktop area, including support for multi-monitor setups and handling edge cases.
+### Details:
+1. Detect available screen dimensions using screen API or equivalent for your framework (e.g., `window.screen` properties in web apps, `QGuiApplication::screens()` in Qt).
+2. Implement boundary checking to prevent widgets from being dragged completely off-screen.
+3. Add multi-monitor detection to identify when widgets cross between displays.
+4. Handle different DPI settings between monitors by adjusting position calculations.
+5. Implement position normalization for screen resolution changes.
+6. Add a position reset functionality that returns widgets to default or last valid position.
+7. Create helper functions to convert between absolute and relative positioning for different screens.
+
+Testing approach:
+- Test with simulated multi-monitor configurations
+- Test boundary cases (dragging to screen edges, corners)
+- Test screen resolution and DPI changes
+- Test with different monitor arrangements (side-by-side, stacked)
+
+## 3. Implement Position Persistence and State Management [done]
+### Dependencies: 4.1, 4.2
+### Description: Create a system to save and restore widget positions between application sessions, ensuring widget placement preferences are maintained.
+### Details:
+1. Design a data structure to store widget positions (e.g., JSON with widget IDs and x/y coordinates).
+2. Implement position serialization and deserialization functions.
+3. Add event listeners to save positions when widgets are moved (consider debouncing to avoid excessive writes).
+4. Create a position storage service that interfaces with local storage (localStorage, IndexedDB, file system, etc. depending on platform).
+5. Implement position restoration logic during application startup.
+6. Add error handling for cases where saved positions are invalid (e.g., if screen configuration has changed).
+7. Implement a migration strategy for handling changes to the position data structure in future updates.
+
+Testing approach:
+- Unit test serialization/deserialization functions
+- Test persistence across application restarts
+- Test recovery from invalid saved positions
+- Test with different widget configurations and counts
+

@@ -1,0 +1,64 @@
+# Task ID: 10
+# Title: Package and Distribution Setup
+# Status: pending
+# Dependencies: 1, 2, 3, 4, 5, 6, 7, 9
+# Priority: low
+# Description: Configure the application for production builds and distribution.
+# Details:
+1. Configure Electron Forge for production builds
+2. Set up code signing for all platforms
+3. Create installers for Windows, macOS, and Linux
+4. Implement auto-update functionality
+5. Add crash reporting and analytics
+6. Create installation documentation
+7. Implement license management
+8. Add first-run experience and onboarding
+
+# Test Strategy:
+Test builds on all target platforms. Verify installers work correctly. Test auto-update process. Ensure crash reporting works properly. Test first-run experience on fresh installations.
+
+# Subtasks:
+## 1. Configure Electron Forge and Production Build Pipeline [done]
+### Dependencies: None
+### Description: Set up Electron Forge to enable production builds and create basic installers for all target platforms (Windows, macOS, and Linux).
+### Details:
+1. Install Electron Forge and required dependencies: `npm install --save-dev @electron-forge/cli @electron-forge/maker-squirrel @electron-forge/maker-zip @electron-forge/maker-deb @electron-forge/maker-rpm`
+2. Configure Electron Forge in `forge.config.js` with appropriate makers for each platform
+3. Set up platform-specific configurations (icons, metadata, etc.)
+4. Create npm scripts for building each platform in package.json
+5. Implement basic environment detection to adjust behavior between development and production builds
+6. Test the build process on each platform to ensure installers are generated correctly
+7. Document the build process for the development team
+
+## 2. Implement Code Signing and Auto-Updates [in-progress]
+### Dependencies: 10.1
+### Description: Configure code signing for all platforms and implement auto-update functionality to ensure users can receive application updates.
+### Details:
+1. Obtain code signing certificates for each platform (Windows, macOS, and Linux)
+2. Configure code signing in Electron Forge for each platform
+3. Set up an update server or use a service like GitHub releases
+4. Implement the auto-update module using Electron's autoUpdater
+5. Add update checking logic on application startup
+6. Create update notification UI for users
+7. Implement update download and installation process
+8. Add update-related user preferences (automatic vs. manual)
+9. Test the update process on all platforms
+10. Document the update workflow for both developers and end-users
+
+## 3. Add User Onboarding, Analytics and License Management [pending]
+### Dependencies: 10.1, 10.2
+### Description: Implement first-run experience, crash reporting, analytics, and license management to improve user experience and application monitoring.
+### Details:
+1. Implement a first-run detection mechanism
+2. Create an onboarding workflow with key feature introduction
+3. Design and implement onboarding UI screens
+4. Integrate a crash reporting service (like Sentry or Bugsnag)
+5. Add analytics to track feature usage and application performance
+6. Implement license key validation and storage
+7. Create license activation and deactivation workflows
+8. Add license status checks on application startup
+9. Design license-related UI (activation, status display)
+10. Create comprehensive installation documentation for end-users
+11. Test the entire workflow from installation to license activation
+12. Ensure analytics respects user privacy settings and applicable regulations
+

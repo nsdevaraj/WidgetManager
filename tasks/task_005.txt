@@ -1,0 +1,77 @@
+# Task ID: 5
+# Title: Develop Settings Window UI
+# Status: done
+# Dependencies: 2
+# Priority: medium
+# Description: Create the React-based settings interface for managing widgets and application preferences.
+# Details:
+1. Set up React component structure for settings UI
+2. Create widget list view with CRUD operations
+3. Implement form components for widget configuration
+4. Add global application settings controls
+5. Create real-time preview of widget changes
+6. Implement theme switching (light/dark/system)
+7. Add responsive layout for different window sizes
+8. Implement keyboard navigation and accessibility
+
+# Test Strategy:
+Test UI rendering and component interactions. Verify settings changes are reflected in the UI and persisted. Test accessibility with screen readers and keyboard navigation.
+
+# Subtasks:
+## 1. Create Base Settings UI Structure and Layout [done]
+### Dependencies: None
+### Description: Set up the foundational React component structure for the settings window with responsive layout and navigation
+### Details:
+Implementation steps:
+1. Create a Settings container component with responsive grid layout
+2. Implement a sidebar navigation component for different setting categories (widgets, appearance, etc.)
+3. Set up routing between different settings sections
+4. Create basic layout components (header, content area, footer with action buttons)
+5. Implement responsive design using CSS Grid/Flexbox for different window sizes
+6. Add keyboard navigation between main sections (tab indices, focus management)
+7. Set up theme context provider for later theme switching
+
+Testing approach:
+- Verify responsive layout works across different viewport sizes
+- Test keyboard navigation between main sections
+- Ensure the component structure renders without errors
+- Validate that routing between sections works correctly
+
+## 2. Implement Widget Management Interface [done]
+### Dependencies: 5.1
+### Description: Create the widget list view with CRUD operations and configuration forms
+### Details:
+Implementation steps:
+1. Create a WidgetList component to display existing widgets with options to edit/delete
+2. Implement an AddWidget component with widget type selection
+3. Develop a WidgetForm component for configuring widget properties
+4. Create form components for different widget types with appropriate validation
+5. Implement widget CRUD operations (connecting to existing data layer)
+6. Add drag-and-drop functionality for reordering widgets
+7. Implement form validation for widget configuration
+
+Testing approach:
+- Test CRUD operations for widgets (add, edit, delete, reorder)
+- Verify form validation works correctly for different input types
+- Test that widget-specific configuration options render correctly
+- Ensure drag-and-drop reordering works and persists changes
+
+## 3. Add Application Preferences and Preview Functionality [done]
+### Dependencies: 5.1, 5.2
+### Description: Implement global application settings, theme switching, and real-time widget preview
+### Details:
+Implementation steps:
+1. Create AppPreferences component for global settings
+2. Implement theme switching functionality (light/dark/system)
+3. Add theme preview in the UI
+4. Create a WidgetPreview component for real-time preview of widget changes
+5. Implement a preview panel that updates as configuration changes
+6. Add accessibility features (ARIA labels, screen reader support)
+7. Implement settings persistence layer to save/load user preferences
+
+Testing approach:
+- Verify theme switching works and persists user selection
+- Test that widget preview updates correctly when configuration changes
+- Validate accessibility using automated tools (axe, lighthouse)
+- Ensure all settings are properly saved and loaded between sessions
+

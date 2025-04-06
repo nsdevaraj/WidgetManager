@@ -1,0 +1,480 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Setup Electron Project Structure",
+      "description": "Initialize the Electron project with React, TypeScript, and electron-store, setting up the main process and renderer processes architecture.",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "1. Create new project using Electron Forge with TypeScript template\n2. Add React 18+ and TypeScript 5+ dependencies\n3. Configure webpack for React support\n4. Set up folder structure (main, renderer, common)\n5. Configure electron-store for persistence\n6. Implement basic IPC communication between processes\n7. Create initial system tray integration\n8. Set up development environment with hot reload",
+      "testStrategy": "Verify project builds and runs without errors. Test IPC communication between main and renderer processes. Ensure system tray appears correctly.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Initialize Electron project with TypeScript and setup folder structure",
+          "description": "Create a new Electron project using Electron Forge with TypeScript template and establish the basic folder structure for the application architecture.",
+          "dependencies": [],
+          "details": "1. Install Electron Forge CLI globally: `npm install -g @electron-forge/cli`\n2. Create new project: `electron-forge init my-app --template=typescript`\n3. Navigate to project directory: `cd my-app`\n4. Set up folder structure:\n   - `/src/main` - Main process code\n   - `/src/renderer` - Renderer process code\n   - `/src/common` - Shared code between processes\n5. Move existing TypeScript configuration and main process code to appropriate folders\n6. Update tsconfig.json to include path aliases for the new folder structure\n7. Update package.json scripts to reflect the new structure\n8. Test by running `npm start` to verify the basic Electron app launches\n9. Commit the initial project structure",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 2,
+          "title": "Integrate React with TypeScript and configure webpack",
+          "description": "Add React to the project, configure webpack for React support, and implement hot reload for development.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Install React dependencies: `npm install react react-dom @types/react @types/react-dom`\n2. Install webpack and related dependencies: `npm install --save-dev webpack webpack-cli webpack-dev-server html-webpack-plugin ts-loader css-loader style-loader file-loader`\n3. Create webpack.config.js in project root with configuration for React and TypeScript\n4. Create a basic React component in `/src/renderer/App.tsx`\n5. Create an HTML template in `/src/renderer/index.html`\n6. Update main process code to load the webpack-built renderer\n7. Configure hot reload by:\n   - Installing `electron-reloader` as dev dependency\n   - Adding hot reload configuration to main process\n8. Update package.json scripts to include webpack build and dev server\n9. Test the setup by running dev script and verifying React components render\n10. Verify hot reload is working by making changes to React components",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 3,
+          "title": "Implement electron-store and IPC communication with system tray integration",
+          "description": "Set up data persistence with electron-store, establish IPC communication between main and renderer processes, and create the system tray integration.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Install electron-store: `npm install electron-store`\n2. Create a store configuration in `/src/main/store.ts`:\n   - Define types for stored data\n   - Initialize electron-store with appropriate options\n   - Export store instance\n3. Implement IPC communication:\n   - Define IPC channel constants in `/src/common/ipc.ts`\n   - Create main process handlers in `/src/main/ipc.ts` to handle renderer requests\n   - Implement renderer process IPC client in `/src/renderer/utils/ipc.ts`\n4. Add system tray integration:\n   - Create tray icon assets in `/assets` folder\n   - Implement tray module in `/src/main/tray.ts`\n   - Add context menu to tray with basic actions\n   - Connect tray actions to main process functions\n5. Test persistence by saving and retrieving data\n6. Test IPC by sending messages between processes\n7. Test system tray by verifying icon appears and context menu works\n8. Add error handling for all implemented features",
+          "status": "done",
+          "parentTaskId": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Implement Configuration System",
+      "description": "Create the data models and storage system for widget configurations and application settings.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "1. Implement the WidgetConfig and AppSettings interfaces as defined in the PRD\n2. Set up electron-store for persistent storage\n3. Create helper functions for CRUD operations on widget configurations\n4. Implement default settings and configuration migration handling\n5. Add validation for configuration data\n6. Create configuration export/import functionality\n7. Implement event emitters for configuration changes",
+      "testStrategy": "Unit test CRUD operations for configurations. Verify persistence across application restarts. Test configuration validation with valid and invalid inputs.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Core Data Models and Storage Setup",
+          "description": "Create the WidgetConfig and AppSettings interfaces and set up electron-store for persistent storage with basic CRUD operations.",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Define the WidgetConfig interface according to the PRD, including properties for widget ID, type, position, size, and custom settings\n2. Define the AppSettings interface according to the PRD, including properties for theme, language, update preferences, etc.\n3. Install and configure electron-store package\n4. Create a ConfigStore class that initializes electron-store with appropriate schema and defaults\n5. Implement basic CRUD helper functions (get, set, delete) for both widget configurations and application settings\n6. Add type safety throughout the implementation\n7. Write unit tests for the data models and CRUD operations\n\nTesting approach:\n- Write unit tests for the data models to ensure they conform to the PRD specifications\n- Test CRUD operations with mock data\n- Verify persistence by writing and reading from the store",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 2,
+          "title": "Implement Configuration Validation and Defaults",
+          "description": "Add validation for configuration data and implement default settings with configuration migration handling.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create validation schemas for WidgetConfig and AppSettings using a validation library (e.g., Zod, Joi)\n2. Implement validation functions that can be called before saving configurations\n3. Create a default configuration factory for generating proper defaults for new widgets and application settings\n4. Implement a version field in the configuration to track schema versions\n5. Create a migration system that can upgrade old configuration formats to newer ones\n6. Add error handling for validation failures with appropriate user feedback\n7. Create recovery mechanisms for corrupted configurations\n\nTesting approach:\n- Test validation with valid and invalid configurations\n- Verify default settings are correctly applied for new installations\n- Test migration paths from older to newer configuration versions\n- Test error handling and recovery from corrupted configurations",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 3,
+          "title": "Implement Configuration Events and Import/Export",
+          "description": "Create configuration change events and implement export/import functionality for configurations.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Create an event emitter system for configuration changes using Node's EventEmitter or a similar pattern\n2. Implement specific events for widget configuration changes, additions, and deletions\n3. Add events for application settings changes\n4. Create an export function that can serialize configurations to JSON files\n5. Implement an import function that can read configurations from JSON files\n6. Add validation to the import process to ensure only valid configurations are imported\n7. Create a backup system that automatically backs up configurations before major changes\n8. Implement a simple API for other parts of the application to subscribe to configuration changes\n\nTesting approach:\n- Test event emission on various configuration changes\n- Verify event subscribers receive appropriate notifications\n- Test the export functionality produces valid JSON files\n- Test import functionality with both valid and invalid configuration files\n- Verify the entire import/export cycle preserves all configuration data",
+          "status": "done",
+          "parentTaskId": 2
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Create Basic Widget Window",
+      "description": "Develop the core frameless, resizable window that can display web content.",
+      "status": "done",
+      "dependencies": [
+        1,
+        2
+      ],
+      "priority": "high",
+      "details": "1. Create BrowserWindow with frameless configuration\n2. Implement custom window chrome/controls\n3. Add WebView component for content display\n4. Configure proper content isolation and sandboxing\n5. Implement basic error handling for content loading\n6. Add resize functionality with proper constraints\n7. Create window position tracking\n8. Implement basic content refresh functionality",
+      "testStrategy": "Test window creation with various URLs. Verify resize functionality works correctly. Confirm content loads properly and is sandboxed. Test error handling with invalid URLs.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Frameless BrowserWindow with Web Content Display",
+          "description": "Create the core frameless window using Electron's BrowserWindow API and configure WebView for displaying web content with proper security settings.",
+          "dependencies": [],
+          "details": "1. Initialize a new BrowserWindow with frameless configuration (frame: false)\n2. Configure proper content isolation settings in webPreferences (contextIsolation: true, sandbox: true)\n3. Set up a preload script for secure communication between renderer and main processes\n4. Implement the WebView component for content display\n5. Configure content security policy (CSP) headers\n6. Add basic error handling for content loading failures\n7. Test the window creation and content loading with various URLs\n8. Verify security settings using Electron's security checklist",
+          "status": "done",
+          "parentTaskId": 3
+        },
+        {
+          "id": 2,
+          "title": "Implement Custom Window Chrome and Controls",
+          "description": "Create a custom window frame with minimize, maximize, and close buttons to replace the native window controls removed in the frameless configuration.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Design a custom title bar component that matches application styling\n2. Implement minimize, maximize/restore, and close buttons with appropriate icons\n3. Connect button actions to the corresponding BrowserWindow methods (minimize(), maximize(), close())\n4. Add window dragging functionality by handling mousedown/mousemove events on the title bar\n5. Implement double-click to maximize/restore on the title bar\n6. Add visual feedback for button hover and active states\n7. Test window controls across different operating systems\n8. Ensure keyboard shortcuts (Alt+F4, etc.) still work properly",
+          "status": "done",
+          "parentTaskId": 3
+        },
+        {
+          "id": 3,
+          "title": "Implement Window Resizing and Position Management",
+          "description": "Add resize functionality with proper constraints and implement window position tracking to maintain state between sessions.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Create resize handles on window edges and corners using CSS and JavaScript\n2. Implement resize logic by tracking mousedown/mousemove events on resize handles\n3. Add minimum and maximum size constraints to prevent unusable window sizes\n4. Implement window position tracking by saving coordinates on window move and close events\n5. Store window position and size in application settings using electron-store or similar\n6. Restore previous window position and size on application restart\n7. Add logic to ensure window is always visible on screen (handle multi-monitor setups)\n8. Test resizing behavior with different content types and window states\n9. Implement graceful fallback if saved position is invalid (e.g., monitor no longer available)",
+          "status": "done",
+          "parentTaskId": 3
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Implement Drag-and-Drop Positioning",
+      "description": "Add the ability to drag widgets around the desktop and persist their positions.",
+      "status": "done",
+      "dependencies": [
+        3
+      ],
+      "priority": "high",
+      "details": "1. Create custom drag regions on widget windows\n2. Implement mouse event handlers for drag operations\n3. Add position boundary checking for multi-monitor support\n4. Create position persistence logic to save locations\n5. Implement drag start/in-progress/end visual feedback\n6. Add position reset functionality\n7. Ensure smooth dragging performance\n8. Handle edge cases like screen resolution changes",
+      "testStrategy": "Test dragging widgets across the screen and between monitors. Verify position persistence after application restart. Test boundary conditions and edge cases.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Widget Drag Detection and Movement",
+          "description": "Create the core drag functionality that allows users to click and drag widgets across the desktop. This includes setting up custom drag regions, implementing mouse event handlers, and ensuring smooth movement.",
+          "dependencies": [],
+          "details": "1. Define custom drag regions on widget headers/title bars using mouse event listeners (mousedown, mousemove, mouseup).\n2. Implement a dragging state manager that tracks when dragging begins, continues, and ends.\n3. Calculate position delta between mouse movements to update widget positions.\n4. Add visual feedback during dragging (e.g., cursor change, slight opacity change, or shadow effect).\n5. Implement throttling or requestAnimationFrame for smooth performance during drag operations.\n6. Add event propagation control to prevent unintended interactions with widget content during dragging.\n\nTesting approach:\n- Unit test the drag state transitions and position calculations\n- Manual testing with different mouse movement speeds\n- Performance testing to ensure smooth dragging even with multiple widgets",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 2,
+          "title": "Add Position Constraints and Multi-Monitor Support",
+          "description": "Implement boundary checking to ensure widgets remain accessible within the visible desktop area, including support for multi-monitor setups and handling edge cases.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Detect available screen dimensions using screen API or equivalent for your framework (e.g., `window.screen` properties in web apps, `QGuiApplication::screens()` in Qt).\n2. Implement boundary checking to prevent widgets from being dragged completely off-screen.\n3. Add multi-monitor detection to identify when widgets cross between displays.\n4. Handle different DPI settings between monitors by adjusting position calculations.\n5. Implement position normalization for screen resolution changes.\n6. Add a position reset functionality that returns widgets to default or last valid position.\n7. Create helper functions to convert between absolute and relative positioning for different screens.\n\nTesting approach:\n- Test with simulated multi-monitor configurations\n- Test boundary cases (dragging to screen edges, corners)\n- Test screen resolution and DPI changes\n- Test with different monitor arrangements (side-by-side, stacked)",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 3,
+          "title": "Implement Position Persistence and State Management",
+          "description": "Create a system to save and restore widget positions between application sessions, ensuring widget placement preferences are maintained.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Design a data structure to store widget positions (e.g., JSON with widget IDs and x/y coordinates).\n2. Implement position serialization and deserialization functions.\n3. Add event listeners to save positions when widgets are moved (consider debouncing to avoid excessive writes).\n4. Create a position storage service that interfaces with local storage (localStorage, IndexedDB, file system, etc. depending on platform).\n5. Implement position restoration logic during application startup.\n6. Add error handling for cases where saved positions are invalid (e.g., if screen configuration has changed).\n7. Implement a migration strategy for handling changes to the position data structure in future updates.\n\nTesting approach:\n- Unit test serialization/deserialization functions\n- Test persistence across application restarts\n- Test recovery from invalid saved positions\n- Test with different widget configurations and counts",
+          "status": "done",
+          "parentTaskId": 4
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Develop Settings Window UI",
+      "description": "Create the React-based settings interface for managing widgets and application preferences.",
+      "status": "done",
+      "dependencies": [
+        2
+      ],
+      "priority": "medium",
+      "details": "1. Set up React component structure for settings UI\n2. Create widget list view with CRUD operations\n3. Implement form components for widget configuration\n4. Add global application settings controls\n5. Create real-time preview of widget changes\n6. Implement theme switching (light/dark/system)\n7. Add responsive layout for different window sizes\n8. Implement keyboard navigation and accessibility",
+      "testStrategy": "Test UI rendering and component interactions. Verify settings changes are reflected in the UI and persisted. Test accessibility with screen readers and keyboard navigation.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Base Settings UI Structure and Layout",
+          "description": "Set up the foundational React component structure for the settings window with responsive layout and navigation",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Create a Settings container component with responsive grid layout\n2. Implement a sidebar navigation component for different setting categories (widgets, appearance, etc.)\n3. Set up routing between different settings sections\n4. Create basic layout components (header, content area, footer with action buttons)\n5. Implement responsive design using CSS Grid/Flexbox for different window sizes\n6. Add keyboard navigation between main sections (tab indices, focus management)\n7. Set up theme context provider for later theme switching\n\nTesting approach:\n- Verify responsive layout works across different viewport sizes\n- Test keyboard navigation between main sections\n- Ensure the component structure renders without errors\n- Validate that routing between sections works correctly",
+          "status": "done",
+          "parentTaskId": 5
+        },
+        {
+          "id": 2,
+          "title": "Implement Widget Management Interface",
+          "description": "Create the widget list view with CRUD operations and configuration forms",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a WidgetList component to display existing widgets with options to edit/delete\n2. Implement an AddWidget component with widget type selection\n3. Develop a WidgetForm component for configuring widget properties\n4. Create form components for different widget types with appropriate validation\n5. Implement widget CRUD operations (connecting to existing data layer)\n6. Add drag-and-drop functionality for reordering widgets\n7. Implement form validation for widget configuration\n\nTesting approach:\n- Test CRUD operations for widgets (add, edit, delete, reorder)\n- Verify form validation works correctly for different input types\n- Test that widget-specific configuration options render correctly\n- Ensure drag-and-drop reordering works and persists changes",
+          "status": "done",
+          "parentTaskId": 5
+        },
+        {
+          "id": 3,
+          "title": "Add Application Preferences and Preview Functionality",
+          "description": "Implement global application settings, theme switching, and real-time widget preview",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Create AppPreferences component for global settings\n2. Implement theme switching functionality (light/dark/system)\n3. Add theme preview in the UI\n4. Create a WidgetPreview component for real-time preview of widget changes\n5. Implement a preview panel that updates as configuration changes\n6. Add accessibility features (ARIA labels, screen reader support)\n7. Implement settings persistence layer to save/load user preferences\n\nTesting approach:\n- Verify theme switching works and persists user selection\n- Test that widget preview updates correctly when configuration changes\n- Validate accessibility using automated tools (axe, lighthouse)\n- Ensure all settings are properly saved and loaded between sessions",
+          "status": "done",
+          "parentTaskId": 5
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Implement Widget Creation Flow",
+      "description": "Create the complete flow for adding new widgets from the settings panel.",
+      "status": "done",
+      "dependencies": [
+        3,
+        5
+      ],
+      "priority": "high",
+      "details": "1. Create 'Add Widget' form with URL input and validation\n2. Implement widget naming and initial configuration\n3. Add preview functionality before creation\n4. Create position selection mechanism\n5. Implement default size handling\n6. Add error handling for invalid URLs\n7. Create success/failure feedback\n8. Implement widget template selection (optional)",
+      "testStrategy": "Test the complete widget creation flow with various URLs. Verify validation works correctly. Test error cases and edge conditions. Ensure new widgets appear correctly on the desktop.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Add Widget Form with Validation",
+          "description": "Create a user-friendly form interface for adding new widgets with proper input validation, URL verification, and widget naming functionality.",
+          "dependencies": [],
+          "details": "1. Design a responsive form component following user-centric design principles\n2. Implement URL input field with real-time validation (check for valid format, accessibility)\n3. Add widget naming field with appropriate character limits and validation\n4. Create initial configuration options (size selection dropdown with default values)\n5. Implement client-side validation logic with clear error messages\n6. Add form submission handling with loading states\n7. Create input sanitization to prevent security issues\n8. Test with various inputs including edge cases (empty fields, malformed URLs)\n9. Ensure keyboard accessibility and tab navigation works correctly\n10. Implement form reset functionality",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 2,
+          "title": "Build Widget Preview and Configuration System",
+          "description": "Create a preview functionality that shows users how their widget will appear before creation, along with configuration options for size and position.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Implement a preview component that renders a representation of the widget based on form inputs\n2. Create a position selection mechanism with grid-based layout options\n3. Add size configuration controls (small, medium, large) with proper constraints\n4. Implement real-time preview updates when configuration changes\n5. Create a responsive preview that shows how widget will appear on different devices\n6. Add widget template selection for common configurations (if implementing optional requirement)\n7. Implement drag-and-drop positioning within the preview area\n8. Add zoom controls for detailed preview inspection\n9. Create widget boundary visualization to show space constraints\n10. Test preview rendering across different browsers and screen sizes",
+          "status": "done",
+          "parentTaskId": 6
+        },
+        {
+          "id": 3,
+          "title": "Implement Widget Creation and Feedback System",
+          "description": "Complete the widget creation process with proper error handling, success/failure feedback, and final widget placement in the user interface.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Implement final validation before widget creation\n2. Create API integration to save widget configuration to backend\n3. Implement error handling for network failures and invalid URLs\n4. Add loading indicators during widget creation process\n5. Create success feedback with animation and confirmation message\n6. Implement failure feedback with specific error details and recovery options\n7. Add widget to user dashboard upon successful creation\n8. Create undo functionality for recent widget additions\n9. Implement Observer pattern for real-time updates to widget status\n10. Add analytics tracking for widget creation success/failure rates\n11. Test the entire flow from form submission through to widget display\n12. Ensure proper cleanup of resources if widget creation is abandoned",
+          "status": "done",
+          "parentTaskId": 6
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Add Advanced Widget Controls",
+      "description": "Implement transparency, z-index, and always-on-top controls for widgets.",
+      "status": "done",
+      "dependencies": [
+        3,
+        4
+      ],
+      "priority": "medium",
+      "details": "1. Add opacity/transparency controls to widget windows\n2. Implement always-on-top toggle functionality\n3. Create z-index management system\n4. Add context menu with quick access to controls\n5. Implement keyboard shortcuts for common actions\n6. Create visual indicators for special states\n7. Add custom CSS injection capability\n8. Implement widget focus/blur handling",
+      "testStrategy": "Test each control individually and in combination. Verify visual appearance with different settings. Ensure context menu and keyboard shortcuts work correctly. Test focus behavior.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement opacity and transparency controls for widgets",
+          "description": "Add UI controls and backend functionality to adjust widget transparency levels",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Create a slider component for opacity control (0-100%)\n2. Add the slider to widget settings panel\n3. Implement event handlers to capture opacity changes\n4. Create a function to apply opacity changes to widget DOM elements\n5. Update widget state to store opacity value\n6. Add a reset-to-default button\n7. Ensure opacity persists when widget is closed/reopened\n\nTesting approach:\n- Test slider UI renders correctly\n- Verify opacity changes are applied in real-time\n- Test persistence of opacity settings\n- Check compatibility across different browsers\n- Verify performance with multiple widgets at different opacity levels",
+          "status": "done",
+          "parentTaskId": 7
+        },
+        {
+          "id": 2,
+          "title": "Add z-index management system and always-on-top functionality",
+          "description": "Implement a system to control widget layering and provide always-on-top toggle capability",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a z-index manager service to track all widget z-indices\n2. Implement functions to bring widgets forward/backward in the stack\n3. Add an always-on-top toggle button in widget header\n4. Create event listeners for the toggle button\n5. Modify widget container to maintain highest z-index when always-on-top is enabled\n6. Add visual indicator for widgets in always-on-top mode\n7. Handle conflicts when multiple widgets are set to always-on-top\n8. Implement widget focus/blur handling to manage z-index automatically\n\nTesting approach:\n- Test z-index changes when clicking between multiple widgets\n- Verify always-on-top widgets remain above regular widgets\n- Test z-index behavior when opening new widgets\n- Check visual indicators display correctly\n- Test focus/blur handling works as expected",
+          "status": "done",
+          "parentTaskId": 7
+        },
+        {
+          "id": 3,
+          "title": "Create context menu and keyboard shortcuts for widget controls",
+          "description": "Implement a right-click context menu and keyboard shortcuts for quick access to widget controls",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Design and implement a context menu component for widgets\n2. Add menu items for transparency control, z-index adjustment, and always-on-top toggle\n3. Implement right-click event handler to show the context menu\n4. Create keyboard shortcut manager for widget controls\n5. Define shortcuts for common actions (Ctrl+T for transparency, Ctrl+F for bring to front, etc.)\n6. Add keyboard event listeners to widget container\n7. Implement custom CSS injection option in the context menu\n8. Add visual tooltips showing available keyboard shortcuts\n\nTesting approach:\n- Verify context menu appears on right-click and contains all options\n- Test all menu items function correctly\n- Ensure keyboard shortcuts work as expected\n- Test custom CSS injection functionality\n- Check accessibility of context menu and keyboard controls\n- Verify tooltips display correctly",
+          "status": "done",
+          "parentTaskId": 7
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Implement Bulk Widget Operations",
+      "description": "Add functionality for managing multiple widgets simultaneously.",
+      "status": "done",
+      "dependencies": [
+        5,
+        6
+      ],
+      "priority": "low",
+      "details": "1. Create multi-select interface in settings panel\n2. Implement bulk actions (show/hide, delete, reset)\n3. Add group positioning functionality\n4. Create save/load for widget groups\n5. Implement drag-and-drop for widget reordering\n6. Add bulk export/import functionality\n7. Create confirmation dialogs for destructive actions\n8. Add undo/redo capability for bulk operations",
+      "testStrategy": "Test selection of multiple widgets. Verify bulk operations work correctly. Test edge cases like selecting all widgets. Ensure undo/redo functionality works properly.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Multi-select Interface and Selection Management",
+          "description": "Create a multi-select interface in the settings panel that allows users to select multiple widgets simultaneously. Implement the core selection management logic that will be the foundation for all bulk operations.",
+          "dependencies": [],
+          "details": "1. Create a checkbox-based selection system for widgets in the settings panel\n2. Implement a 'Select All' and 'Deselect All' functionality\n3. Add visual indicators for selected widgets (e.g., highlighted borders or background colors)\n4. Create a selection state manager using the Observer pattern to maintain the list of selected widgets\n5. Implement filtering capabilities to allow selection based on widget properties\n6. Add keyboard shortcuts for multi-select operations (Shift+Click for range selection, Ctrl/Cmd+Click for individual toggle)\n7. Ensure the selection state persists during panel navigation\n8. Create a selection counter to show how many widgets are currently selected\n9. Test the selection mechanism with different widget types and quantities\n10. Ensure accessibility compliance for the selection interface (ARIA attributes, keyboard navigation)",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 2,
+          "title": "Implement Core Bulk Action Operations",
+          "description": "Build the fundamental bulk operations (show/hide, delete, reset) and group positioning functionality. Implement the Command pattern to enable undo/redo capabilities for these operations.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create a bulk actions toolbar that appears when multiple widgets are selected\n2. Implement the show/hide toggle functionality for multiple widgets\n3. Build the delete operation with proper cleanup of resources\n4. Implement reset functionality to restore widgets to default settings\n5. Add group positioning features (align, distribute, stack)\n6. Create a Command pattern implementation to encapsulate each bulk operation\n7. Build a command history manager to track operations\n8. Implement undo/redo functionality using the command history\n9. Add confirmation dialogs for destructive actions (delete, reset)\n10. Implement asynchronous processing for operations on large numbers of widgets\n11. Add progress indicators for long-running operations\n12. Test each bulk operation with various widget combinations\n13. Implement error handling and recovery mechanisms for failed operations",
+          "status": "done",
+          "parentTaskId": 8
+        },
+        {
+          "id": 3,
+          "title": "Implement Widget Group Management and Data Transfer",
+          "description": "Create functionality for saving and loading widget groups, implement drag-and-drop for widget reordering, and add bulk export/import capabilities to facilitate sharing widget configurations across systems.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Implement save functionality to store selected widgets as a named group\n2. Create a group management interface to view, edit, and delete saved groups\n3. Add load functionality to select all widgets in a previously saved group\n4. Implement drag-and-drop reordering using a library like SortableJS or react-beautiful-dnd\n5. Create visual feedback during drag operations (shadow elements, placeholder indicators)\n6. Build bulk export functionality that serializes widget configurations to JSON\n7. Implement import functionality with validation of the imported data structure\n8. Add conflict resolution for imports (merge, replace, or skip options)\n9. Create data pagination for operations on large widget sets\n10. Implement data validation to ensure integrity during import/export\n11. Add versioning information to exported data to handle future format changes\n12. Create detailed logging for tracking bulk operations\n13. Test import/export with various data sizes and widget configurations\n14. Ensure security measures are in place for data validation during import",
+          "status": "done",
+          "parentTaskId": 8
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Implement Performance Optimizations",
+      "description": "Add resource management and performance features for running multiple widgets efficiently.",
+      "status": "done",
+      "dependencies": [
+        3,
+        7
+      ],
+      "priority": "medium",
+      "details": "1. Implement background throttling for inactive widgets\n2. Add lazy loading for widget content\n3. Create resource usage monitoring\n4. Implement automatic suspension for high-resource widgets\n5. Add manual performance controls\n6. Create refresh rate management\n7. Implement memory usage optimization\n8. Add performance profiling and diagnostics",
+      "testStrategy": "Measure resource usage with multiple widgets. Test throttling behavior with background widgets. Verify performance with resource-intensive content. Monitor memory usage over time.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Widget Resource Monitoring and Diagnostics",
+          "description": "Create a monitoring system to track resource usage of widgets and provide diagnostic information",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Create a ResourceMonitor class that tracks CPU, memory, and render time for each widget\n2. Implement performance profiling methods to collect metrics at regular intervals\n3. Add diagnostic logging for resource consumption patterns\n4. Create a dashboard component to visualize widget performance metrics\n5. Implement threshold detection for identifying high-resource widgets\n6. Add API endpoints to retrieve performance data\n\nTesting approach:\n- Unit test the ResourceMonitor class with mock widget data\n- Create performance tests with simulated high-load scenarios\n- Verify accurate reporting of resource metrics\n- Test dashboard visualization with sample performance data",
+          "status": "done",
+          "parentTaskId": 9
+        },
+        {
+          "id": 2,
+          "title": "Implement Widget Loading Optimizations",
+          "description": "Add lazy loading and background throttling mechanisms to improve initial load performance and reduce resource usage",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Implement lazy loading mechanism to defer widget content loading until visible\n2. Create IntersectionObserver integration to detect widget visibility\n3. Add background throttling for inactive widgets (reduce update frequency)\n4. Implement refresh rate management to control widget update frequency\n5. Create priority queue for widget loading based on viewport position\n6. Add loading state indicators for widgets during lazy loading\n\nTesting approach:\n- Test lazy loading with different viewport scenarios\n- Measure and verify reduced resource usage during background throttling\n- Verify widgets properly resume normal operation when returning to foreground\n- Test refresh rate controls under various system load conditions",
+          "status": "done",
+          "parentTaskId": 9
+        },
+        {
+          "id": 3,
+          "title": "Implement Advanced Resource Management Controls",
+          "description": "Add automatic and manual controls to manage widget resource usage and optimize memory consumption",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation steps:\n1. Implement automatic suspension for widgets exceeding resource thresholds (using data from subtask 1)\n2. Create memory usage optimization through object pooling and reference management\n3. Add manual performance controls in widget settings (user-configurable throttling)\n4. Implement graceful degradation for widgets under high system load\n5. Create resource allocation strategies based on widget priority\n6. Add API for programmatic control of widget performance settings\n\nTesting approach:\n- Test automatic suspension with artificially resource-intensive widgets\n- Measure memory usage before and after optimization implementation\n- Verify manual controls correctly affect widget performance\n- Test system behavior under various load conditions\n- Ensure suspended widgets can be properly resumed",
+          "status": "done",
+          "parentTaskId": 9
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Package and Distribution Setup",
+      "description": "Configure the application for production builds and distribution.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9
+      ],
+      "priority": "low",
+      "details": "1. Configure Electron Forge for production builds\n2. Set up code signing for all platforms\n3. Create installers for Windows, macOS, and Linux\n4. Implement auto-update functionality\n5. Add crash reporting and analytics\n6. Create installation documentation\n7. Implement license management\n8. Add first-run experience and onboarding",
+      "testStrategy": "Test builds on all target platforms. Verify installers work correctly. Test auto-update process. Ensure crash reporting works properly. Test first-run experience on fresh installations.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Configure Electron Forge and Production Build Pipeline",
+          "description": "Set up Electron Forge to enable production builds and create basic installers for all target platforms (Windows, macOS, and Linux).",
+          "dependencies": [],
+          "details": "1. Install Electron Forge and required dependencies: `npm install --save-dev @electron-forge/cli @electron-forge/maker-squirrel @electron-forge/maker-zip @electron-forge/maker-deb @electron-forge/maker-rpm`\n2. Configure Electron Forge in `forge.config.js` with appropriate makers for each platform\n3. Set up platform-specific configurations (icons, metadata, etc.)\n4. Create npm scripts for building each platform in package.json\n5. Implement basic environment detection to adjust behavior between development and production builds\n6. Test the build process on each platform to ensure installers are generated correctly\n7. Document the build process for the development team",
+          "status": "done",
+          "parentTaskId": 10
+        },
+        {
+          "id": 2,
+          "title": "Implement Code Signing and Auto-Updates",
+          "description": "Configure code signing for all platforms and implement auto-update functionality to ensure users can receive application updates.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Obtain code signing certificates for each platform (Windows, macOS, and Linux)\n2. Configure code signing in Electron Forge for each platform\n3. Set up an update server or use a service like GitHub releases\n4. Implement the auto-update module using Electron's autoUpdater\n5. Add update checking logic on application startup\n6. Create update notification UI for users\n7. Implement update download and installation process\n8. Add update-related user preferences (automatic vs. manual)\n9. Test the update process on all platforms\n10. Document the update workflow for both developers and end-users",
+          "status": "in-progress",
+          "parentTaskId": 10
+        },
+        {
+          "id": 3,
+          "title": "Add User Onboarding, Analytics and License Management",
+          "description": "Implement first-run experience, crash reporting, analytics, and license management to improve user experience and application monitoring.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Implement a first-run detection mechanism\n2. Create an onboarding workflow with key feature introduction\n3. Design and implement onboarding UI screens\n4. Integrate a crash reporting service (like Sentry or Bugsnag)\n5. Add analytics to track feature usage and application performance\n6. Implement license key validation and storage\n7. Create license activation and deactivation workflows\n8. Add license status checks on application startup\n9. Design license-related UI (activation, status display)\n10. Create comprehensive installation documentation for end-users\n11. Test the entire workflow from installation to license activation\n12. Ensure analytics respects user privacy settings and applicable regulations",
+          "status": "pending",
+          "parentTaskId": 10
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "projectName": "Widget Desktop Application",
+    "totalTasks": 10,
+    "sourceFile": "scripts/PRD.txt",
+    "generatedAt": "2023-12-07"
+  }
+}
