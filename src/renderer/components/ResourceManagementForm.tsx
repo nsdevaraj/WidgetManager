@@ -11,13 +11,17 @@ export const ResourceManagementForm: React.FC<ResourceManagementFormProps> = ({
   settings,
   onSettingsChange
 }) => {
-  const handleChange = (path: string[], value: any) => {
+  const handleChange = <T extends unknown>(path: string[], value: T) => {
     const newSettings = { ...settings };
-    let current = newSettings;
+    let current: any = newSettings;
+    
+    // Navigate to the second-to-last element in the path
     for (let i = 0; i < path.length - 1; i++) {
-      current = current[path[i] as keyof typeof current] as any;
+      current = current[path[i]];
     }
-    current[path[path.length - 1] as keyof typeof current] = value;
+    
+    // Set the value at the final path element
+    current[path[path.length - 1]] = value;
     onSettingsChange(newSettings);
   };
 
