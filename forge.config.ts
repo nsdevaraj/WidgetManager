@@ -14,6 +14,32 @@ import { rendererConfig } from './webpack.renderer.config';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    icon: './assets/icon',
+    appBundleId: 'com.urlwidgets.app',
+    appCategoryType: 'public.app-category.productivity',
+    osxSign: {
+      identity: 'Developer ID Application: NS Devaraj',
+      optionsForFile: () => ({
+        hardenedRuntime: true,
+        gatekeeperAssess: false,
+        entitlements: 'entitlements.plist',
+        'entitlements-inherit': 'entitlements.plist',
+        'signature-flags': 'library'
+      })
+    },
+    protocols: [
+      {
+        name: 'URL Widgets Protocol',
+        schemes: ['urlwidgets']
+      }
+    ],
+    ignore: [
+      /^\/(?!dist|package\.json|node_modules)/,
+      /\.git/,
+      /\.vscode/,
+      /\.idea/,
+      /\.DS_Store/
+    ]
   },
   rebuildConfig: {},
   makers: [
@@ -47,7 +73,6 @@ const config: ForgeConfig = {
           },
         ],
       },
-      // Add devContentSecurityPolicy for development
       devContentSecurityPolicy: `default-src 'self' 'unsafe-inline' 'unsafe-eval' data: ws:;
         script-src 'self' 'unsafe-inline' 'unsafe-eval';
         style-src 'self' 'unsafe-inline';
@@ -55,8 +80,6 @@ const config: ForgeConfig = {
         font-src 'self' data:;
         connect-src 'self' ws: http: https:;`,
     }),
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,

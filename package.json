@@ -14,7 +14,14 @@
     "dev": "node scripts/dev.js",
     "list": "node scripts/dev.js list",
     "generate": "node scripts/dev.js generate",
-    "parse-prd": "node scripts/dev.js parse-prd"
+    "parse-prd": "node scripts/dev.js parse-prd",
+    "make:mac": "electron-forge make --platform darwin",
+    "make:win": "electron-forge make --platform win32",
+    "make:linux": "electron-forge make --platform linux",
+    "package:mac": "electron-forge package --platform darwin",
+    "package:win": "electron-forge package --platform win32",
+    "package:linux": "electron-forge package --platform linux",
+    "build:all": "npm run make:mac && npm run make:win && npm run make:linux"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
