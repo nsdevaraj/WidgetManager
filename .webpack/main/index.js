@@ -19823,7 +19823,15 @@ exports.appSettingsSchema = zod_1.z.object({
     gridSnapping: zod_1.z.boolean(),
     theme: zod_1.z.enum(['light', 'dark', 'system']),
     startupBehavior: zod_1.z.enum(['restore', 'minimized']),
-    startAtLogin: zod_1.z.boolean()
+    startAtLogin: zod_1.z.boolean(),
+    widgetGroups: zod_1.z.array(zod_1.z.object({
+        id: zod_1.z.string(),
+        name: zod_1.z.string(),
+        widgetIds: zod_1.z.array(zod_1.z.string()),
+        isVisible: zod_1.z.boolean(),
+        createdAt: zod_1.z.number(),
+        updatedAt: zod_1.z.number()
+    })).optional()
 }).strict();
 // Store schema combining both widgets and settings
 exports.storeSchema = zod_1.z.object({
@@ -19850,7 +19858,8 @@ exports.defaultAppSettings = {
     gridSnapping: true,
     theme: 'system',
     startupBehavior: 'restore',
-    startAtLogin: true
+    startAtLogin: true,
+    widgetGroups: []
 };
 // Helper functions for validation
 const validateWidgetConfig = (config) => {

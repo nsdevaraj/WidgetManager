@@ -43,7 +43,15 @@ export const appSettingsSchema = z.object({
   gridSnapping: z.boolean(),
   theme: z.enum(['light', 'dark', 'system']),
   startupBehavior: z.enum(['restore', 'minimized']),
-  startAtLogin: z.boolean()
+  startAtLogin: z.boolean(),
+  widgetGroups: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    widgetIds: z.array(z.string()),
+    isVisible: z.boolean(),
+    createdAt: z.number(),
+    updatedAt: z.number()
+  })).optional()
 }).strict();
 
 // Store schema combining both widgets and settings
@@ -78,7 +86,8 @@ export const defaultAppSettings: AppSettings = {
   gridSnapping: true,
   theme: 'system',
   startupBehavior: 'restore',
-  startAtLogin: true
+  startAtLogin: true,
+  widgetGroups: []
 };
 
 // Helper functions for validation
@@ -92,4 +101,13 @@ export const validateAppSettings = (settings: unknown): AppSettings => {
 
 export const validateStoreSchema = (store: unknown): StoreSchema => {
   return storeSchema.parse(store);
-}; 
+};
+
+export interface WidgetGroup {
+  id: string;
+  name: string;
+  widgetIds: string[];
+  isVisible: boolean;
+  createdAt: number;
+  updatedAt: number;
+} 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { WidgetConfig, WidgetType, defaultWidgetConfig } from '../../types/config';
+import { WidgetConfig, WidgetType, defaultWidgetConfig, WidgetGroup } from '../../types/config';
 import { WidgetPreview } from './WidgetPreview';
 import { NotificationManager, setNotificationManager, showNotification } from './NotificationManager';
 import './WidgetManager.css';
@@ -76,6 +76,7 @@ export const WidgetManager: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isBulkOperationInProgress, setIsBulkOperationInProgress] = useState(false);
   const [formData, setFormData] = useState<WidgetFormData>({
     type: 'clock',
     size: {
@@ -89,6 +90,9 @@ export const WidgetManager: React.FC = () => {
       initialUrl: ''
     }
   });
+  const [groups, setGroups] = useState<WidgetGroup[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
 
   useEffect(() => {
     loadWidgets();
@@ -394,20 +398,230 @@ export const WidgetManager: React.FC = () => {
     setSelectedWidgets(new Set());
   };
 
-  // Add bulk action handlers
+  // Load groups from settings
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const settings = await window.api.getSettings();
+        if (settings.widgetGroups) {
+          // Ensure all required properties are present
+          const validGroups = settings.widgetGroups.filter((group): group is WidgetGroup => {
+            return (
+              typeof group.id === 'string' &&
+              typeof group.name === 'string' &&
+              Array.isArray(group.widgetIds) &&
+              typeof group.isVisible === 'boolean' &&
+              typeof group.createdAt === 'number' &&
+              typeof group.updatedAt === 'number'
+            );
+          });
+          setGroups(validGroups);
+        } else {
+          setGroups([]);
+        }
+      } catch (error) {
+        console.error('Failed to load widget groups:', error);
+        showNotification('error', 'Failed to load widget groups');
+      }
+    };
+    loadGroups();
+  }, []);
+
+  // Group management functions
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim() || selectedWidgets.size === 0) return;
+
+    try {
+      const newGroup: WidgetGroup = {
+        id: crypto.randomUUID(),
+        name: newGroupName.trim(),
+        widgetIds: Array.from(selectedWidgets),
+        isVisible: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      const updatedGroups = [...groups, newGroup];
+      await window.api.updateSettings({ widgetGroups: updatedGroups });
+      setGroups(updatedGroups);
+      setNewGroupName('');
+      setIsCreatingGroup(false);
+      showNotification('success', `Created group "${newGroup.name}" with ${selectedWidgets.size} widgets`);
+    } catch (error) {
+      console.error('Failed to create widget group:', error);
+      showNotification('error', 'Failed to create widget group');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      const confirmed = window.confirm(`Are you sure you want to delete the group "${group.name}"?`);
+      if (!confirmed) return;
+
+      const updatedGroups = groups.filter(g => g.id !== groupId);
+      await window.api.updateSettings({ widgetGroups: updatedGroups });
+      setGroups(updatedGroups);
+      showNotification('success', `Deleted group "${group.name}"`);
+    } catch (error) {
+      console.error('Failed to delete widget group:', error);
+      showNotification('error', 'Failed to delete widget group');
+    }
+  };
+
+  const handleToggleGroupVisibility = async (groupId: string) => {
+    try {
+      const groupIndex = groups.findIndex(g => g.id === groupId);
+      if (groupIndex === -1) return;
+
+      const group = groups[groupIndex];
+      const updatedGroup = { ...group, isVisible: !group.isVisible };
+      
+      // Update widgets in the group
+      await handleBulkVisibility(!group.isVisible, group.widgetIds);
+      
+      // Update group state
+      const updatedGroups = [...groups];
+      updatedGroups[groupIndex] = updatedGroup;
+      await window.api.updateSettings({ widgetGroups: updatedGroups });
+      setGroups(updatedGroups);
+    } catch (error) {
+      console.error('Failed to toggle group visibility:', error);
+      showNotification('error', 'Failed to update group visibility');
+    }
+  };
+
+  // Update bulk visibility handler to accept specific widget IDs
+  const handleBulkVisibility = async (visible: boolean, widgetIds?: string[]) => {
+    const targetWidgets = widgetIds || Array.from(selectedWidgets);
+    if (targetWidgets.length === 0) return;
+    
+    setIsBulkOperationInProgress(true);
+    setError(null);
+
+    try {
+      const updates = { isVisible: visible };
+      const operations = targetWidgets.map(id => 
+        window.api.updateWidget(id, updates)
+      );
+      
+      await Promise.all(operations);
+      
+      // Update local state
+      setWidgets(widgets.map(w => 
+        targetWidgets.includes(w.id)
+          ? { ...w, isVisible: visible }
+          : w
+      ));
+      
+      if (!widgetIds) {
+        showNotification(
+          'success',
+          `Successfully ${visible ? 'showed' : 'hid'} ${targetWidgets.length} widgets`
+        );
+      }
+    } catch (error) {
+      console.error('Failed to update widget visibility:', error);
+      showNotification(
+        'error',
+        `Failed to ${visible ? 'show' : 'hide'} some widgets. Please try again.`
+      );
+    } finally {
+      setIsBulkOperationInProgress(false);
+    }
+  };
+
+  // Add bulk operation handlers
+  const handleBulkAlwaysOnTop = async (alwaysOnTop: boolean) => {
+    if (selectedWidgets.size === 0) return;
+    
+    setIsBulkOperationInProgress(true);
+    setError(null);
+
+    try {
+      const updates = { settings: { isAlwaysOnTop: alwaysOnTop } };
+      const operations = Array.from(selectedWidgets).map(id => 
+        window.api.updateWidget(id, updates)
+      );
+      
+      await Promise.all(operations);
+      
+      // Update local state
+      setWidgets(widgets.map(w => 
+        selectedWidgets.has(w.id) 
+          ? { ...w, settings: { ...w.settings, isAlwaysOnTop: alwaysOnTop } }
+          : w
+      ));
+      
+      showNotification(
+        'success',
+        `Successfully ${alwaysOnTop ? 'pinned' : 'unpinned'} ${selectedWidgets.size} widgets`
+      );
+    } catch (error) {
+      console.error('Failed to update widget always-on-top:', error);
+      showNotification(
+        'error',
+        `Failed to ${alwaysOnTop ? 'pin' : 'unpin'} some widgets. Please try again.`
+      );
+    } finally {
+      setIsBulkOperationInProgress(false);
+    }
+  };
+
+  const handleBulkOpacity = async (opacity: number) => {
+    if (selectedWidgets.size === 0) return;
+    
+    setIsBulkOperationInProgress(true);
+    setError(null);
+
+    try {
+      const updates = { settings: { opacity } };
+      const operations = Array.from(selectedWidgets).map(id => 
+        window.api.updateWidget(id, updates)
+      );
+      
+      await Promise.all(operations);
+      
+      // Update local state
+      setWidgets(widgets.map(w => 
+        selectedWidgets.has(w.id) 
+          ? { ...w, settings: { ...w.settings, opacity } }
+          : w
+      ));
+      
+      showNotification(
+        'success',
+        `Successfully set opacity to ${Math.round(opacity * 100)}% for ${selectedWidgets.size} widgets`
+      );
+    } catch (error) {
+      console.error('Failed to update widget opacity:', error);
+      showNotification(
+        'error',
+        'Failed to update opacity for some widgets. Please try again.'
+      );
+    } finally {
+      setIsBulkOperationInProgress(false);
+    }
+  };
+
+  // Update the bulk delete handler with loading state
   const handleBulkDelete = async () => {
     if (selectedWidgets.size === 0) return;
 
     const confirmed = window.confirm(`Are you sure you want to delete ${selectedWidgets.size} widgets?`);
     if (!confirmed) return;
 
-    setIsLoading(true);
+    setIsBulkOperationInProgress(true);
     setError(null);
 
     try {
-      for (const widgetId of selectedWidgets) {
-        await window.api.deleteWidget(widgetId);
-      }
+      const operations = Array.from(selectedWidgets).map(id => 
+        window.api.deleteWidget(id)
+      );
+      
+      await Promise.all(operations);
       
       setWidgets(widgets.filter(w => !selectedWidgets.has(w.id)));
       setSelectedWidgets(new Set());
@@ -416,7 +630,7 @@ export const WidgetManager: React.FC = () => {
       console.error('Failed to delete widgets:', error);
       showNotification('error', 'Failed to delete some widgets. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsBulkOperationInProgress(false);
     }
   };
 
@@ -461,29 +675,101 @@ export const WidgetManager: React.FC = () => {
           </div>
           <div className="widget-list-actions">
             {isSelectionMode ? (
-              <>
+              <div className="bulk-actions">
                 <button
                   className="select-all-button"
                   onClick={selectAllWidgets}
-                  disabled={widgets.length === selectedWidgets.size}
+                  disabled={widgets.length === selectedWidgets.size || isBulkOperationInProgress}
                 >
                   Select All
                 </button>
                 <button
                   className="deselect-all-button"
                   onClick={deselectAllWidgets}
-                  disabled={selectedWidgets.size === 0}
+                  disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
                 >
                   Deselect All
                 </button>
-                <button
-                  className="bulk-delete-button"
-                  onClick={handleBulkDelete}
-                  disabled={selectedWidgets.size === 0}
-                >
-                  Delete Selected ({selectedWidgets.size})
-                </button>
-              </>
+                <div className="bulk-operations">
+                  <button
+                    onClick={() => handleBulkVisibility(true)}
+                    disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                  >
+                    Show
+                  </button>
+                  <button
+                    onClick={() => handleBulkVisibility(false)}
+                    disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                  >
+                    Hide
+                  </button>
+                  <button
+                    onClick={() => handleBulkAlwaysOnTop(true)}
+                    disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                  >
+                    Pin to Top
+                  </button>
+                  <button
+                    onClick={() => handleBulkAlwaysOnTop(false)}
+                    disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                  >
+                    Unpin
+                  </button>
+                  <div className="bulk-opacity">
+                    <label>Opacity:</label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.1"
+                      defaultValue="1"
+                      onChange={(e) => handleBulkOpacity(Number(e.target.value))}
+                      disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                    />
+                  </div>
+                  <button
+                    className="bulk-delete-button"
+                    onClick={handleBulkDelete}
+                    disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                  >
+                    Delete Selected ({selectedWidgets.size})
+                  </button>
+                  <div className="group-actions">
+                    {isCreatingGroup ? (
+                      <div className="create-group-form">
+                        <input
+                          type="text"
+                          value={newGroupName}
+                          onChange={(e) => setNewGroupName(e.target.value)}
+                          placeholder="Group name"
+                          disabled={isBulkOperationInProgress}
+                        />
+                        <button
+                          onClick={handleCreateGroup}
+                          disabled={!newGroupName.trim() || selectedWidgets.size === 0 || isBulkOperationInProgress}
+                        >
+                          Create Group
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsCreatingGroup(false);
+                            setNewGroupName('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setIsCreatingGroup(true)}
+                        disabled={selectedWidgets.size === 0 || isBulkOperationInProgress}
+                      >
+                        Save as Group
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
               <button
                 className="add-widget-button"
@@ -736,6 +1022,47 @@ export const WidgetManager: React.FC = () => {
                 settings={formData.settings}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add widget groups section */}
+      {groups.length > 0 && !isSelectionMode && (
+        <div className="widget-groups">
+          <h4>Widget Groups</h4>
+          <div className="group-list">
+            {groups.map(group => (
+              <div key={group.id} className="group-item">
+                <div className="group-info">
+                  <span className="group-name">{group.name}</span>
+                  <span className="group-count">{group.widgetIds.length} widgets</span>
+                </div>
+                <div className="group-actions">
+                  <button
+                    onClick={() => handleToggleGroupVisibility(group.id)}
+                    title={group.isVisible ? 'Hide group' : 'Show group'}
+                  >
+                    {group.isVisible ? 'Hide' : 'Show'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedWidgets(new Set(group.widgetIds));
+                      setIsSelectionMode(true);
+                    }}
+                    title="Select group widgets"
+                  >
+                    Select
+                  </button>
+                  <button
+                    className="delete-group"
+                    onClick={() => handleDeleteGroup(group.id)}
+                    title="Delete group"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
