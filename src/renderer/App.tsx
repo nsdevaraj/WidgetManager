@@ -1,5 +1,6 @@
 import React from 'react';
 import WindowChrome from './components/WindowChrome';
+import WidgetContainer from './components/WidgetContainer';
 import './index.css';
 
 const App: React.FC = () => {
@@ -16,6 +17,7 @@ const App: React.FC = () => {
           Add Widget
         </button>
       </div>
+      <WidgetContainer />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import type { WidgetConfig, StoreSchema } from '../main/store';
+import type { WidgetConfig } from './config';
 
 export interface WindowPosition {
   x: number;
