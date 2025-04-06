@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
@@ -8,24 +8,71 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-const createWindow = (): void => {
+const createWindow = (): BrowserWindow => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     height: 600,
     width: 800,
+    frame: false, // Make window frameless
+    transparent: true, // Enable transparency for custom chrome
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false, // Disable node integration for security
+      contextIsolation: true, // Enable context isolation
+      sandbox: true, // Enable sandboxing
+      webviewTag: false, // Disable webview tag for security
+      preload: path.join(__dirname, 'preload.js'), // Add preload script
     },
+    // Set minimum dimensions
+    minWidth: 400,
+    minHeight: 300,
+    // Enable window to be shown only when ready
+    show: false,
   });
 
-  // and load the index.html of the app.
+  // Handle window control events
+  ipcMain.on('window-control', (_, command) => {
+    switch (command) {
+      case 'minimize':
+        mainWindow.minimize();
+        break;
+      case 'maximize':
+        if (mainWindow.isMaximized()) {
+          mainWindow.unmaximize();
+        } else {
+          mainWindow.maximize();
+        }
+        break;
+      case 'close':
+        mainWindow.close();
+        break;
+    }
+  });
+
+  // Handle window loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorDescription);
+    // TODO: Show error UI to user
+  });
+
+  // Show window when ready to prevent flickering
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  // Load the app's entry point
   if (MAIN_WINDOW_WEBPACK_ENTRY) {
-    mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+    mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY).catch(err => {
+      console.error('Failed to load app:', err);
+      // TODO: Show error UI to user
+    });
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // Disable DevTools in production
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+
+  return mainWindow;
 };
 
 // This method will be called when Electron has finished
