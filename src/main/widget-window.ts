@@ -46,8 +46,8 @@ export class WidgetWindow {
   }
 
   private setupWindow() {
-    // Load the widget's URL
-    this.window.loadURL(WIDGET_WINDOW_WEBPACK_ENTRY).catch(err => {
+    // Load the widget's URL with the widget ID as a query parameter
+    this.window.loadURL(`${WIDGET_WINDOW_WEBPACK_ENTRY}?id=${this.config.id}`).catch(err => {
       console.error('Failed to load widget window:', err);
     });
 
@@ -96,14 +96,17 @@ export class WidgetWindow {
   }
 
   private setupIPC() {
-    // Handle widget:get-config request
-    ipcMain.handle('widget:get-config', () => {
+    // Use a unique channel name for each widget instance
+    const configChannel = `widget:${this.config.id}:get-config`;
+    
+    // Handle widget:get-config request with unique channel
+    ipcMain.handle(configChannel, () => {
       return this.config;
     });
 
     // Clean up IPC handlers when window is closed
     this.window.on('closed', () => {
-      ipcMain.removeHandler('widget:get-config');
+      ipcMain.removeHandler(configChannel);
     });
 
     // Handle BrowserView creation

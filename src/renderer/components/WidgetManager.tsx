@@ -69,6 +69,9 @@ const WIDGET_TYPES: WidgetTypeInfo[] = [
 
 export const WidgetManager: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [selectedWidgets, setSelectedWidgets] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [lastSelectedWidget, setLastSelectedWidget] = useState<string | null>(null);
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,6 +101,35 @@ export const WidgetManager: React.FC = () => {
       }
     });
   }, []);
+
+  // Add keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isSelectionMode) return;
+
+      // Prevent default browser shortcuts
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'd')) {
+        e.preventDefault();
+      }
+
+      // Cmd/Ctrl + A to select all
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        selectAllWidgets();
+      }
+      // Cmd/Ctrl + D to deselect all
+      else if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        deselectAllWidgets();
+      }
+      // Escape to exit selection mode
+      else if (e.key === 'Escape') {
+        setIsSelectionMode(false);
+        setSelectedWidgets(new Set());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSelectionMode]);
 
   const loadWidgets = async () => {
     setIsLoading(true);
@@ -306,6 +338,88 @@ export const WidgetManager: React.FC = () => {
     setError(null);
   };
 
+  // Add selection handlers
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedWidgets(new Set());
+    }
+  };
+
+  const toggleWidgetSelection = (widgetId: string, event: React.MouseEvent) => {
+    if (!isSelectionMode) {
+      if (!event.metaKey && !event.ctrlKey) {
+        handleEditWidget(widgets.find(w => w.id === widgetId)!);
+        return;
+      }
+      setIsSelectionMode(true);
+    }
+
+    if (event.shiftKey && lastSelectedWidget && isSelectionMode) {
+      // Find indices for range selection
+      const widgetIds = widgets.map(w => w.id);
+      const currentIndex = widgetIds.indexOf(widgetId);
+      const lastIndex = widgetIds.indexOf(lastSelectedWidget);
+      
+      // Select all widgets between last selected and current
+      const start = Math.min(currentIndex, lastIndex);
+      const end = Math.max(currentIndex, lastIndex);
+      
+      setSelectedWidgets(prev => {
+        const newSelection = new Set(prev);
+        for (let i = start; i <= end; i++) {
+          newSelection.add(widgetIds[i]);
+        }
+        return newSelection;
+      });
+    } else {
+      setSelectedWidgets(prev => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(widgetId)) {
+          newSelection.delete(widgetId);
+        } else {
+          newSelection.add(widgetId);
+        }
+        return newSelection;
+      });
+      setLastSelectedWidget(widgetId);
+    }
+  };
+
+  const selectAllWidgets = () => {
+    setSelectedWidgets(new Set(widgets.map(w => w.id)));
+  };
+
+  const deselectAllWidgets = () => {
+    setSelectedWidgets(new Set());
+  };
+
+  // Add bulk action handlers
+  const handleBulkDelete = async () => {
+    if (selectedWidgets.size === 0) return;
+
+    const confirmed = window.confirm(`Are you sure you want to delete ${selectedWidgets.size} widgets?`);
+    if (!confirmed) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      for (const widgetId of selectedWidgets) {
+        await window.api.deleteWidget(widgetId);
+      }
+      
+      setWidgets(widgets.filter(w => !selectedWidgets.has(w.id)));
+      setSelectedWidgets(new Set());
+      showNotification('success', `Successfully deleted ${selectedWidgets.size} widgets`);
+    } catch (error) {
+      console.error('Failed to delete widgets:', error);
+      showNotification('error', 'Failed to delete some widgets. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading && widgets.length === 0) {
     return (
       <div className="widget-manager loading">
@@ -327,28 +441,73 @@ export const WidgetManager: React.FC = () => {
       
       <div className="widget-list">
         <div className="widget-list-header">
-          <h3>Installed Widgets</h3>
-          <button
-            className="add-widget-button"
-            onClick={() => {
-              setSelectedWidget(null);
-              setFormData({
-                type: 'clock',
-                size: WIDGET_TYPES[0].defaultSize,
-                settings: {
-                  isAlwaysOnTop: false,
-                  opacity: 1,
-                  customCSS: '',
-                  initialUrl: ''
-                }
-              });
-              setIsEditing(true);
-              setError(null);
-            }}
-            disabled={isLoading}
-          >
-            Add Widget
-          </button>
+          <div className="widget-list-title">
+            <h3>Installed Widgets</h3>
+            {widgets.length > 0 && (
+              <div className="selection-controls">
+                <button
+                  className={`selection-mode-button ${isSelectionMode ? 'active' : ''}`}
+                  onClick={toggleSelectionMode}
+                >
+                  {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+                </button>
+                {isSelectionMode && (
+                  <span className="selection-shortcuts">
+                    Shortcuts: ⌘A (Select All), ⌘D (Deselect All), Esc (Exit), Shift+Click (Range)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="widget-list-actions">
+            {isSelectionMode ? (
+              <>
+                <button
+                  className="select-all-button"
+                  onClick={selectAllWidgets}
+                  disabled={widgets.length === selectedWidgets.size}
+                >
+                  Select All
+                </button>
+                <button
+                  className="deselect-all-button"
+                  onClick={deselectAllWidgets}
+                  disabled={selectedWidgets.size === 0}
+                >
+                  Deselect All
+                </button>
+                <button
+                  className="bulk-delete-button"
+                  onClick={handleBulkDelete}
+                  disabled={selectedWidgets.size === 0}
+                >
+                  Delete Selected ({selectedWidgets.size})
+                </button>
+              </>
+            ) : (
+              <button
+                className="add-widget-button"
+                onClick={() => {
+                  setSelectedWidget(null);
+                  setFormData({
+                    type: 'clock',
+                    size: WIDGET_TYPES[0].defaultSize,
+                    settings: {
+                      isAlwaysOnTop: false,
+                      opacity: 1,
+                      customCSS: '',
+                      initialUrl: ''
+                    }
+                  });
+                  setIsEditing(true);
+                  setError(null);
+                }}
+                disabled={isLoading}
+              >
+                Add Widget
+              </button>
+            )}
+          </div>
         </div>
         
         {widgets.length === 0 ? (
@@ -360,16 +519,33 @@ export const WidgetManager: React.FC = () => {
           <div className="widget-grid">
             {widgets.map(widget => {
               const typeInfo = WIDGET_TYPES.find(t => t.type === widget.type);
+              const isSelected = selectedWidgets.has(widget.id);
               return (
-                <div key={widget.id} className={`widget-item ${selectedWidget === widget.id ? 'selected' : ''}`}>
+                <div
+                  key={widget.id}
+                  className={`widget-item ${isSelected ? 'selected' : ''} ${isSelectionMode ? 'selectable' : ''}`}
+                  onClick={(e) => toggleWidgetSelection(widget.id, e)}
+                >
+                  {isSelectionMode && (
+                    <div className="widget-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleWidgetSelection(widget.id, {} as React.MouseEvent)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
                   <div className="widget-info">
                     <span className="widget-type">{typeInfo?.icon} {typeInfo?.label || widget.type}</span>
                     <span className="widget-size">{widget.size.width}×{widget.size.height}</span>
                   </div>
-                  <div className="widget-actions">
-                    <button onClick={() => handleEditWidget(widget)}>Edit</button>
-                    <button onClick={() => handleRemoveWidget(widget.id)}>Remove</button>
-                  </div>
+                  {!isSelectionMode && (
+                    <div className="widget-actions">
+                      <button onClick={(e) => { e.stopPropagation(); handleEditWidget(widget); }}>Edit</button>
+                      <button onClick={(e) => { e.stopPropagation(); handleRemoveWidget(widget.id); }}>Remove</button>
+                    </div>
+                  )}
                 </div>
               );
             })}

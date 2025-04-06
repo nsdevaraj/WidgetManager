@@ -19426,8 +19426,8 @@ class WidgetWindow {
     }
     setupWindow() {
         var _a;
-        // Load the widget's URL
-        this.window.loadURL('http://localhost:3000/widget_window').catch(err => {
+        // Load the widget's URL with the widget ID as a query parameter
+        this.window.loadURL(`${'http://localhost:3000/widget_window'}?id=${this.config.id}`).catch(err => {
             console.error('Failed to load widget window:', err);
         });
         // Set opacity if specified
@@ -19469,13 +19469,15 @@ class WidgetWindow {
         });
     }
     setupIPC() {
-        // Handle widget:get-config request
-        electron_1.ipcMain.handle('widget:get-config', () => {
+        // Use a unique channel name for each widget instance
+        const configChannel = `widget:${this.config.id}:get-config`;
+        // Handle widget:get-config request with unique channel
+        electron_1.ipcMain.handle(configChannel, () => {
             return this.config;
         });
         // Clean up IPC handlers when window is closed
         this.window.on('closed', () => {
-            electron_1.ipcMain.removeHandler('widget:get-config');
+            electron_1.ipcMain.removeHandler(configChannel);
         });
         // Handle BrowserView creation
         electron_1.ipcMain.on('browserView:create', (_, { id, url }) => {
@@ -19808,7 +19810,8 @@ exports.widgetConfigSchema = zod_1.z.object({
         isAlwaysOnTop: zod_1.z.boolean().optional(),
         opacity: zod_1.z.number().min(0.1).max(1).optional(),
         customCSS: zod_1.z.string().optional(),
-        initialUrl: zod_1.z.string().optional()
+        initialUrl: zod_1.z.string().optional(),
+        zIndex: zod_1.z.number().min(0).optional()
     }).optional()
 });
 // Application settings schema
@@ -19835,7 +19838,8 @@ exports.defaultWidgetConfig = {
     settings: {
         isAlwaysOnTop: false,
         opacity: 1,
-        initialUrl: 'https://widgets.cursor.sh/welcome.html'
+        initialUrl: 'https://widgets.cursor.sh/welcome.html',
+        zIndex: 0
     }
 };
 exports.defaultAppSettings = {

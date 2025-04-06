@@ -65,7 +65,16 @@ const api: IElectronAPI = {
 // Initialize widget configuration
 (async () => {
   try {
-    const widgetConfig = await ipcRenderer.invoke('widget:get-config');
+    // Get the widget ID from the URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const widgetId = urlParams.get('id');
+    
+    if (!widgetId) {
+      throw new Error('Widget ID not provided');
+    }
+
+    // Use the widget-specific channel
+    const widgetConfig = await ipcRenderer.invoke(`widget:${widgetId}:get-config`);
     
     // Expose the API and widget config to the renderer process
     contextBridge.exposeInMainWorld('api', api);
