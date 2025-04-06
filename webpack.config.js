@@ -10,7 +10,7 @@ module.exports = {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
   },
   entry: {
-    main_window: './src/renderer/renderer.tsx',
+    main_window: './src/renderer/index.tsx',
     widget_window: './src/renderer/widget.tsx',
   },
   output: {

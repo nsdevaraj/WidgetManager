@@ -7,24 +7,56 @@ module.exports = {
     asar: true,
   },
   rebuildConfig: {},
-  makers: [],
+  makers: [
+    {
+      name: '@electron-forge/maker-squirrel',
+      config: {},
+    },
+    {
+      name: '@electron-forge/maker-zip',
+      platforms: ['darwin'],
+    },
+    {
+      name: '@electron-forge/maker-deb',
+      config: {},
+    },
+    {
+      name: '@electron-forge/maker-rpm',
+      config: {},
+    },
+  ],
   plugins: [
-    new WebpackPlugin({
-      mainConfig: require('./webpack.main.config'),
-      renderer: {
-        config: require('./webpack.renderer.config'),
-        entryPoints: [
-          {
-            html: './src/renderer/index.html',
-            js: './src/renderer/renderer.tsx',
-            name: 'main_window',
-            preload: {
-              js: './src/main/preload.ts',
+    {
+      name: '@electron-forge/plugin-webpack',
+      config: {
+        mainConfig: './webpack.main.config.js',
+        preloadConfig: './webpack.preload.config.js',
+        devContentSecurityPolicy: "connect-src 'self' * 'unsafe-eval'",
+        renderer: {
+          config: './webpack.renderer.config.js',
+          entryPoints: [
+            {
+              html: './src/renderer/index.html',
+              js: './src/renderer/renderer.tsx',
+              name: 'main_window',
+              preload: {
+                js: './src/main/preload.ts',
+                name: 'main-preload'
+              },
             },
-          },
-        ],
+            {
+              html: './src/renderer/widget.html',
+              js: './src/renderer/widget.tsx',
+              name: 'widget_window',
+              preload: {
+                js: './src/main/widget-preload.ts',
+                name: 'widget-preload'
+              },
+            },
+          ],
+        },
       },
-    }),
+    },
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,

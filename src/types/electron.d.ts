@@ -37,6 +37,12 @@ export interface IElectronAPI {
   maximize: () => Promise<void>;
   restore: () => Promise<void>;
   close: () => Promise<void>;
+
+  // Window drag and resize events
+  onStartDrag: () => void;
+  onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => void;
+  onMouseMove: (x: number, y: number) => void;
+  onMouseUp: () => void;
 }
 
 declare global {

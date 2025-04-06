@@ -1,121 +1,114 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
 import './Widget.css';
 
 interface WidgetProps {
   config: WidgetConfig;
-  onDragEnd: (position: Position) => void;
+  onDragEnd?: (position: Position) => void;
   onPositionChange?: (position: Position) => void;
+  standalone?: boolean;
 }
 
-export const Widget: React.FC<WidgetProps> = ({ config, onDragEnd, onPositionChange }) => {
+export const Widget: React.FC<WidgetProps> = ({ 
+  config, 
+  onDragEnd, 
+  onPositionChange,
+  standalone = false 
+}) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: config.position.x, y: config.position.y });
-  const dragOffset = useRef<Position>({ x: 0, y: 0 });
-  const widgetRef = useRef<HTMLDivElement>(null);
-  const lastUpdateRef = useRef<number>(0);
-  const positionRef = useRef<Position>(position);
+  const [dragStart, setDragStart] = useState<Position | null>(null);
 
-  // Update position ref when position changes
   useEffect(() => {
-    positionRef.current = position;
-  }, [position]);
-
-  // Update position when config changes
-  useEffect(() => {
-    setPosition({ x: config.position.x, y: config.position.y });
-  }, [config.position]);
-
-  // Debounced position update
-  const debouncedPositionUpdate = useCallback((newPosition: Position) => {
-    const now = Date.now();
-    if (now - lastUpdateRef.current > 50) { // 50ms debounce
-      lastUpdateRef.current = now;
-      onPositionChange?.(newPosition);
-    }
-  }, [onPositionChange]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!widgetRef.current) return;
-    
-    try {
-      setIsDragging(true);
-      const rect = widgetRef.current.getBoundingClientRect();
-      dragOffset.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
-    } catch (error) {
-      console.error('Error starting drag:', error);
-      setIsDragging(false);
-    }
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
-
-    try {
-      const newPosition = {
-        x: e.clientX - dragOffset.current.x,
-        y: e.clientY - dragOffset.current.y
+    if (standalone) {
+      // In standalone mode, use window.api for drag operations
+      const handleMouseDown = () => {
+        window.api.onStartDrag();
       };
 
-      // Ensure position is within reasonable bounds
-      if (Math.abs(newPosition.x) > 10000 || Math.abs(newPosition.y) > 10000) {
-        console.warn('Position out of bounds, ignoring update');
-        return;
-      }
+      const handleMouseMove = (e: MouseEvent) => {
+        window.api.onMouseMove(e.screenX, e.screenY);
+      };
 
-      setPosition(newPosition);
-      debouncedPositionUpdate(newPosition);
-    } catch (error) {
-      console.error('Error during drag:', error);
-      setIsDragging(false);
-    }
-  }, [isDragging, debouncedPositionUpdate]);
+      const handleMouseUp = () => {
+        window.api.onMouseUp();
+      };
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDragging) return;
-    
-    try {
-      setIsDragging(false);
-      onDragEnd(positionRef.current);
-    } catch (error) {
-      console.error('Error ending drag:', error);
-    }
-  }, [isDragging, onDragEnd]);
-
-  useEffect(() => {
-    if (isDragging) {
+      window.addEventListener('mousedown', handleMouseDown);
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        window.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
     }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+  }, [standalone]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (standalone) return; // Skip in standalone mode
+
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - config.position.x,
+      y: e.clientY - config.position.y
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || standalone) return;
+
+    const newPosition = {
+      x: e.clientX - dragStart!.x,
+      y: e.clientY - dragStart!.y
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+    onPositionChange?.(newPosition);
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging || standalone) return;
+
+    setIsDragging(false);
+    onDragEnd?.({
+      x: config.position.x,
+      y: config.position.y
+    });
+  };
+
+  const style: React.CSSProperties = standalone ? {} : {
+    position: 'absolute',
+    left: config.position.x,
+    top: config.position.y,
+    width: config.size.width,
+    height: config.size.height,
+    opacity: config.settings?.opacity ?? 1,
+    cursor: isDragging ? 'grabbing' : 'grab'
+  };
+
+  if (config.settings?.customCSS) {
+    try {
+      const customStyles = JSON.parse(config.settings.customCSS);
+      Object.assign(style, customStyles);
+    } catch (error) {
+      console.error('Failed to parse custom CSS:', error);
+    }
+  }
 
   return (
     <div
-      ref={widgetRef}
-      className={`widget ${isDragging ? 'dragging' : ''}`}
-      style={{
-        position: 'absolute',
-        left: position.x,
-        top: position.y,
-        width: config.size.width,
-        height: config.size.height,
-        cursor: isDragging ? 'grabbing' : 'grab'
-      }}
+      className={`widget ${config.type} ${isDragging ? 'dragging' : ''}`}
+      style={style}
       onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     >
-      <div className="widget-header">
-        <div className="widget-title">{config.type}</div>
-      </div>
-      <div className="widget-content">
-        {/* Widget content will be rendered here based on type */}
-      </div>
+      {/* Widget content based on type */}
+      {config.type === 'clock' && <div>Clock Widget</div>}
+      {config.type === 'weather' && <div>Weather Widget</div>}
+      {config.type === 'notes' && <div>Notes Widget</div>}
+      {config.type === 'calendar' && <div>Calendar Widget</div>}
     </div>
   );
 }; 

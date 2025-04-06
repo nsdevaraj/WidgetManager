@@ -18463,8 +18463,18 @@ exports.NEVER = parseUtil_1.INVALID;
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function fulfilled(value) { try {
+            step(generator.next(value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function rejected(value) { try {
+            step(generator["throw"](value));
+        }
+        catch (e) {
+            reject(e);
+        } }
         function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
@@ -19047,94 +19057,6 @@ exports.storeHelpers = {
 
 /***/ }),
 
-/***/ "./src/main/tray.ts":
-/*!**************************!*\
-  !*** ./src/main/tray.ts ***!
-  \**************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.destroyTray = exports.createTray = void 0;
-const electron_1 = __webpack_require__(/*! electron */ "electron");
-const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
-const config_1 = __webpack_require__(/*! ../types/config */ "./src/types/config.ts");
-const path_1 = __importDefault(__webpack_require__(/*! path */ "path"));
-let tray = null;
-function createTray(mainWindow) {
-    if (tray !== null) {
-        return tray;
-    }
-    // Create tray icon
-    const icon = electron_1.nativeImage.createFromPath(path_1.default.join(__dirname, 'assets', 'tray-icon.png'))
-        .resize({ width: 16, height: 16 }); // Resize for better appearance on macOS
-    if (icon.isEmpty()) {
-        console.error('Failed to load tray icon');
-    }
-    // Create tray with icon
-    tray = new electron_1.Tray(icon);
-    const contextMenu = electron_1.Menu.buildFromTemplate([
-        {
-            label: 'Show/Hide Widgets',
-            click: () => {
-                const widgets = store_1.store.get('widgets', []);
-                const allVisible = widgets.every((w) => w.isVisible);
-                widgets.forEach((widget) => {
-                    store_1.storeHelpers.updateWidget(widget.id, { isVisible: !allVisible });
-                });
-            }
-        },
-        { type: 'separator' },
-        {
-            label: 'Start at Login',
-            type: 'checkbox',
-            checked: store_1.store.get('settings', config_1.defaultAppSettings).startAtLogin,
-            click: (menuItem) => {
-                electron_1.app.setLoginItemSettings({
-                    openAtLogin: menuItem.checked,
-                    path: electron_1.app.getPath('exe')
-                });
-                store_1.storeHelpers.updateSettings({ startAtLogin: menuItem.checked });
-            }
-        },
-        { type: 'separator' },
-        {
-            label: 'Quit',
-            click: () => {
-                electron_1.app.quit();
-            }
-        }
-    ]);
-    tray.setToolTip('Widget Desktop');
-    tray.setContextMenu(contextMenu);
-    // Double click shows/hides the main window
-    tray.on('double-click', () => {
-        if (mainWindow.isVisible()) {
-            mainWindow.hide();
-        }
-        else {
-            mainWindow.show();
-            mainWindow.focus();
-        }
-    });
-    return tray;
-}
-exports.createTray = createTray;
-function destroyTray() {
-    if (tray) {
-        tray.destroy();
-        tray = null;
-    }
-}
-exports.destroyTray = destroyTray;
-
-
-/***/ }),
-
 /***/ "./src/main/widget-manager.ts":
 /*!************************************!*\
   !*** ./src/main/widget-manager.ts ***!
@@ -19146,13 +19068,14 @@ exports.destroyTray = destroyTray;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initializeWidgetManagement = exports.WidgetManager = void 0;
 const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
+const widget_window_1 = __webpack_require__(/*! ./widget-window */ "./src/main/widget-window.ts");
 class WidgetManager {
     constructor() {
         // Initialize widgets from store
         this.widgets = new Map();
         const storedWidgets = store_1.storeHelpers.getWidgets();
         storedWidgets.forEach((widget) => {
-            this.widgets.set(widget.id, widget);
+            this.widgets.set(widget.id, new widget_window_1.WidgetWindow(widget));
         });
     }
     static getInstance() {
@@ -19165,7 +19088,8 @@ class WidgetManager {
         try {
             // Use storeHelpers to add widget with proper validation and ID generation
             const newWidget = store_1.storeHelpers.addWidget(widget);
-            this.widgets.set(newWidget.id, newWidget);
+            const widgetWindow = new widget_window_1.WidgetWindow(newWidget);
+            this.widgets.set(newWidget.id, widgetWindow);
             return Promise.resolve(newWidget);
         }
         catch (error) {
@@ -19173,36 +19097,47 @@ class WidgetManager {
             return Promise.reject(error);
         }
     }
-    removeWidget(id) {
-        try {
-            store_1.storeHelpers.removeWidget(id);
-            this.widgets.delete(id);
-            return Promise.resolve();
-        }
-        catch (error) {
-            console.error('Failed to remove widget:', error);
-            return Promise.reject(error);
-        }
-    }
     updateWidget(id, updates) {
         try {
-            const widget = this.widgets.get(id);
-            if (!widget) {
+            const widgetWindow = this.widgets.get(id);
+            if (!widgetWindow) {
                 throw new Error(`Widget with id ${id} not found`);
             }
-            store_1.storeHelpers.updateWidget(id, updates);
-            const updatedWidget = Object.assign(Object.assign({}, widget), updates);
-            this.widgets.set(id, updatedWidget);
-            return Promise.resolve(updatedWidget);
+            // Update window first
+            widgetWindow.updateConfig(updates);
+            // Get the updated config from the window
+            const updatedConfig = widgetWindow.getConfig();
+            // Update store with the full config
+            store_1.storeHelpers.updateWidget(id, updatedConfig);
+            return Promise.resolve(updatedConfig);
         }
         catch (error) {
             console.error('Failed to update widget:', error);
             return Promise.reject(error);
         }
     }
+    removeWidget(id) {
+        try {
+            const widgetWindow = this.widgets.get(id);
+            if (!widgetWindow) {
+                return Promise.resolve(false);
+            }
+            // Remove from store first
+            store_1.storeHelpers.removeWidget(id);
+            // Dispose window and remove from map
+            widgetWindow.dispose();
+            this.widgets.delete(id);
+            return Promise.resolve(true);
+        }
+        catch (error) {
+            console.error('Failed to remove widget:', error);
+            return Promise.reject(error);
+        }
+    }
     listWidgets() {
         try {
-            return Promise.resolve(Array.from(this.widgets.values()));
+            const configs = Array.from(this.widgets.values()).map(window => window.getConfig());
+            return Promise.resolve(configs);
         }
         catch (error) {
             console.error('Failed to list widgets:', error);
@@ -19210,6 +19145,8 @@ class WidgetManager {
         }
     }
     dispose() {
+        // Dispose all widget windows
+        this.widgets.forEach(widget => widget.dispose());
         this.widgets.clear();
         WidgetManager.instance = null;
     }
@@ -19220,6 +19157,97 @@ function initializeWidgetManagement() {
     return WidgetManager.getInstance();
 }
 exports.initializeWidgetManagement = initializeWidgetManagement;
+
+
+/***/ }),
+
+/***/ "./src/main/widget-window.ts":
+/*!***********************************!*\
+  !*** ./src/main/widget-window.ts ***!
+  \***********************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WidgetWindow = void 0;
+const electron_1 = __webpack_require__(/*! electron */ "electron");
+class WidgetWindow {
+    constructor(config) {
+        this.config = config;
+        this.window = this.createWindow();
+        this.setupWindow();
+    }
+    createWindow() {
+        var _a, _b;
+        return new electron_1.BrowserWindow({
+            width: this.config.size.width,
+            height: this.config.size.height,
+            x: this.config.position.x,
+            y: this.config.position.y,
+            frame: false,
+            transparent: true,
+            alwaysOnTop: (_b = (_a = this.config.settings) === null || _a === void 0 ? void 0 : _a.isAlwaysOnTop) !== null && _b !== void 0 ? _b : false,
+            skipTaskbar: true,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: true,
+                webviewTag: false,
+                preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/widget_window/preload.js',
+            },
+        });
+    }
+    setupWindow() {
+        var _a;
+        // Load the widget's URL
+        this.window.loadURL('http://localhost:3000/widget_window').catch(err => {
+            console.error('Failed to load widget window:', err);
+        });
+        // Set opacity if specified
+        if (((_a = this.config.settings) === null || _a === void 0 ? void 0 : _a.opacity) !== undefined) {
+            this.window.setOpacity(this.config.settings.opacity);
+        }
+        // Handle window ready-to-show
+        this.window.once('ready-to-show', () => {
+            this.window.show();
+        });
+        // Handle window close
+        this.window.on('closed', () => {
+            this.dispose();
+        });
+    }
+    updateConfig(updates) {
+        // Update position if specified
+        if (updates.position) {
+            this.window.setPosition(updates.position.x, updates.position.y);
+        }
+        // Update size if specified
+        if (updates.size) {
+            this.window.setSize(updates.size.width, updates.size.height);
+        }
+        // Update settings if specified
+        if (updates.settings) {
+            if (updates.settings.isAlwaysOnTop !== undefined) {
+                this.window.setAlwaysOnTop(updates.settings.isAlwaysOnTop);
+            }
+            if (updates.settings.opacity !== undefined) {
+                this.window.setOpacity(updates.settings.opacity);
+            }
+        }
+        // Update the stored config
+        this.config = Object.assign(Object.assign({}, this.config), updates);
+    }
+    getConfig() {
+        return this.config;
+    }
+    dispose() {
+        if (!this.window.isDestroyed()) {
+            this.window.close();
+        }
+    }
+}
+exports.WidgetWindow = WidgetWindow;
 
 
 /***/ }),
@@ -19713,56 +19741,13 @@ module.exports = require("util");
 /******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
-(() => {
-"use strict";
-var exports = __webpack_exports__;
-/*!***************************!*\
-  !*** ./src/main/index.ts ***!
-  \***************************/
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const electron_1 = __webpack_require__(/*! electron */ "electron");
-const main_1 = __webpack_require__(/*! ./main */ "./src/main/main.ts");
-const tray_1 = __webpack_require__(/*! ./tray */ "./src/main/tray.ts");
-__webpack_require__(/*! ./ipc */ "./src/main/ipc.ts"); // Initialize IPC handlers
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electron-squirrel-startup/index.js")) {
-    electron_1.app.quit();
-}
-let mainWindow = null;
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-electron_1.app.on('ready', () => {
-    mainWindow = (0, main_1.createWindow)();
-    (0, tray_1.createTray)(mainWindow);
-});
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-electron_1.app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        electron_1.app.quit();
-    }
-});
-electron_1.app.on('activate', () => {
-    // On OS X it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (electron_1.BrowserWindow.getAllWindows().length === 0) {
-        mainWindow = (0, main_1.createWindow)();
-    }
-});
-electron_1.app.on('before-quit', () => {
-    (0, tray_1.destroyTray)();
-});
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
-
-})();
-
-module.exports = __webpack_exports__;
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/main/main.ts");
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
