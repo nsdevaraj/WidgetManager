@@ -2,87 +2,40 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { WidgetConfig } from '../types/config';
+import { IElectronAPI } from '../types/window';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld(
-  'api', {
-    // Widget operations
-    addWidget: (widget: Omit<WidgetConfig, 'id'>) => 
-      ipcRenderer.invoke('widget:add', widget),
-    
-    removeWidget: (id: string) => 
-      ipcRenderer.invoke('widget:remove', id),
-    
-    updateWidget: (id: string, updates: Partial<WidgetConfig>) =>
-      ipcRenderer.invoke('widget:update', { id, updates }),
-    
-    listWidgets: () => 
-      ipcRenderer.invoke('widget:list'),
+contextBridge.exposeInMainWorld('api', {
+  // Widget management
+  listWidgets: () => ipcRenderer.invoke('widget:list'),
+  addWidget: (config: any) => ipcRenderer.invoke('widget:add', config),
+  updateWidget: (id: string, updates: any) => ipcRenderer.invoke('widget:update', { id, updates }),
+  deleteWidget: (id: string) => ipcRenderer.invoke('widget:delete', id),
+  
+  // Screen management
+  getScreens: () => ipcRenderer.invoke('screen:get-all'),
+  getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),
+  getCurrentScreen: () => ipcRenderer.invoke('screen:get-current'),
+  
+  // Window management
+  getPosition: () => ipcRenderer.invoke('window:get-position'),
+  setPosition: (x: number, y: number) => ipcRenderer.invoke('window:set-position', x, y),
+  minimize: () => ipcRenderer.invoke('window:minimize'),
+  maximize: () => ipcRenderer.invoke('window:maximize'),
+  restore: () => ipcRenderer.invoke('window:restore'),
+  close: () => ipcRenderer.invoke('window:close'),
 
-    // Settings operations
-    getSettings: () => 
-      ipcRenderer.invoke('settings:get'),
-    
-    updateSettings: (updates: any) => 
-      ipcRenderer.invoke('settings:update', updates),
+  // Settings management
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  updateSettings: (updates: any) => ipcRenderer.invoke('settings:update', updates),
+  resetSettings: () => ipcRenderer.invoke('settings:reset'),
 
-    // Window control functions
-    minimizeWindow: () => ipcRenderer.send('window:minimize'),
-    maximizeWindow: () => ipcRenderer.send('window:maximize'),
-    closeWindow: () => ipcRenderer.send('window:close'),
-
-    // Window position and size management
-    getWindowPosition: () => ipcRenderer.invoke('window:get-position'),
-    setWindowPosition: (position: { x: number; y: number }) => 
-      ipcRenderer.send('window:set-position', position),
-    getWindowSize: () => ipcRenderer.invoke('window:get-size'),
-    setWindowSize: (size: { width: number; height: number }) => 
-      ipcRenderer.send('window:set-size', size),
-    
-    // Window drag and resize
-    startWindowDrag: () => {
-      ipcRenderer.send('window:start-drag');
-      
-      const mouseMoveHandler = (e: MouseEvent) => {
-        ipcRenderer.send('window:mouse-move', { x: e.screenX, y: e.screenY });
-      };
-      
-      const mouseUpHandler = () => {
-        ipcRenderer.send('window:mouse-up');
-        window.removeEventListener('mousemove', mouseMoveHandler);
-        window.removeEventListener('mouseup', mouseUpHandler);
-      };
-      
-      window.addEventListener('mousemove', mouseMoveHandler);
-      window.addEventListener('mouseup', mouseUpHandler);
-    },
-    
-    startWindowResize: (direction: 'bottom' | 'right' | 'bottomRight') => {
-      ipcRenderer.send('window:start-resize', direction);
-      
-      const mouseMoveHandler = (e: MouseEvent) => {
-        ipcRenderer.send('window:mouse-move', { x: e.screenX, y: e.screenY });
-      };
-      
-      const mouseUpHandler = () => {
-        ipcRenderer.send('window:mouse-up');
-        window.removeEventListener('mousemove', mouseMoveHandler);
-        window.removeEventListener('mouseup', mouseUpHandler);
-      };
-      
-      window.addEventListener('mousemove', mouseMoveHandler);
-      window.addEventListener('mouseup', mouseUpHandler);
-    },
-
-    // Screen management
-    getScreens: () => ipcRenderer.invoke('screen:get-all'),
-    getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),
-    getCurrentScreen: () => ipcRenderer.invoke('screen:get-current'),
-
-    // Add any other APIs you want to expose to the renderer process here
-    // Example: send: (channel: string, data: any) => ipcRenderer.send(channel, data),
-    // Example: receive: (channel: string, func: Function) => ipcRenderer.on(channel, func),
-  }
-);
+  // Window drag and resize events
+  onStartDrag: () => ipcRenderer.send('window:start-drag'),
+  onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => 
+    ipcRenderer.send('window:start-resize', direction),
+  onMouseMove: (x: number, y: number) => 
+    ipcRenderer.send('window:mouse-move', { x, y }),
+  onMouseUp: () => ipcRenderer.send('window:mouse-up')
+} as IElectronAPI);

@@ -43,40 +43,53 @@ export function initializeIpcHandlers() {
   });
 
   // Window operations
-  ipcMain.handle('window:get-position', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    return windowManager.getPosition();
+  ipcMain.handle('window:get-position', async (event) => {
+    try {
+      return windowManager.getPosition();
+    } catch (error) {
+      console.error('Failed to get window position:', error);
+      return { x: 0, y: 0 };
+    }
   });
 
-  ipcMain.handle('window:set-position', (event, x: number, y: number) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    windowManager.setPosition(x, y);
+  ipcMain.handle('window:set-position', async (event, x: number, y: number) => {
+    try {
+      windowManager.setPosition(x, y);
+    } catch (error) {
+      console.error('Failed to set window position:', error);
+    }
   });
 
-  ipcMain.handle('window:minimize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    windowManager.minimize();
+  ipcMain.handle('window:minimize', async (event) => {
+    try {
+      windowManager.minimize();
+    } catch (error) {
+      console.error('Failed to minimize window:', error);
+    }
   });
 
-  ipcMain.handle('window:maximize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    windowManager.maximize();
+  ipcMain.handle('window:maximize', async (event) => {
+    try {
+      windowManager.maximize();
+    } catch (error) {
+      console.error('Failed to maximize window:', error);
+    }
   });
 
-  ipcMain.handle('window:restore', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    windowManager.restore();
+  ipcMain.handle('window:restore', async (event) => {
+    try {
+      windowManager.restore();
+    } catch (error) {
+      console.error('Failed to restore window:', error);
+    }
   });
 
-  ipcMain.handle('window:close', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-    windowManager.close();
+  ipcMain.handle('window:close', async (event) => {
+    try {
+      windowManager.close();
+    } catch (error) {
+      console.error('Failed to close window:', error);
+    }
   });
 
   // Window drag and resize events
@@ -90,13 +103,14 @@ export function initializeIpcHandlers() {
   });
 
   ipcMain.on('window:mouse-move', (event, { x, y }) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) windowManager.setWindow(win);
-
-    if (isDragging) {
-      windowManager.handleDrag(x, y);
-    } else if (isResizing) {
-      windowManager.handleResize(resizeDirection, x, y);
+    try {
+      if (isDragging) {
+        windowManager.handleDrag(x, y);
+      } else if (isResizing) {
+        windowManager.handleResize(resizeDirection, x, y);
+      }
+    } catch (error) {
+      console.error('Failed to handle window movement:', error);
     }
   });
 

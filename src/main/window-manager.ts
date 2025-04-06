@@ -16,75 +16,94 @@ export class WindowManager {
 
   setWindow(window: BrowserWindow): void {
     this.window = window;
+    
+    // Listen for window destruction
+    window.on('closed', () => {
+      if (this.window === window) {
+        this.window = null;
+      }
+    });
+  }
+
+  private ensureWindow(): BrowserWindow {
+    if (!this.window || this.window.isDestroyed()) {
+      // Get the focused window or the first window
+      this.window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+      if (!this.window || this.window.isDestroyed()) {
+        throw new Error('No valid window available');
+      }
+    }
+    return this.window;
   }
 
   getPosition(): WindowPosition {
-    if (!this.window) return { x: 0, y: 0 };
-    const [x, y] = this.window.getPosition();
+    const win = this.ensureWindow();
+    const [x, y] = win.getPosition();
     return { x, y };
   }
 
   setPosition(x: number, y: number): void {
-    if (!this.window) return;
-    this.window.setPosition(x, y);
+    const win = this.ensureWindow();
+    win.setPosition(x, y);
   }
 
   minimize(): void {
-    if (!this.window) return;
-    this.window.minimize();
+    const win = this.ensureWindow();
+    win.minimize();
   }
 
   maximize(): void {
-    if (!this.window) return;
-    this.window.maximize();
+    const win = this.ensureWindow();
+    win.maximize();
   }
 
   restore(): void {
-    if (!this.window) return;
-    this.window.restore();
+    const win = this.ensureWindow();
+    win.restore();
   }
 
   close(): void {
-    if (!this.window) return;
-    this.window.close();
+    const win = this.ensureWindow();
+    win.close();
   }
 
   getSize(): WindowSize {
-    if (!this.window) return { width: 800, height: 600 };
-    const [width, height] = this.window.getSize();
+    const win = this.ensureWindow();
+    const [width, height] = win.getSize();
     return { width, height };
   }
 
   setSize(size: WindowSize): void {
-    if (!this.window) return;
-    this.window.setSize(size.width, size.height);
+    const win = this.ensureWindow();
+    win.setSize(size.width, size.height);
   }
 
   handleDrag(x: number, y: number): void {
-    if (!this.window) return;
-    this.window.setPosition(x, y);
+    const win = this.ensureWindow();
+    win.setPosition(x, y);
   }
 
   handleResize(direction: 'bottom' | 'right' | 'bottomRight', x: number, y: number): void {
-    if (!this.window) return;
-    const [width, height] = this.window.getSize();
-    const [windowX, windowY] = this.window.getPosition();
+    const win = this.ensureWindow();
+    const [width, height] = win.getSize();
+    const [windowX, windowY] = win.getPosition();
 
     switch (direction) {
       case 'bottom':
-        this.window.setSize(width, y - windowY);
+        win.setSize(width, y - windowY);
         break;
       case 'right':
-        this.window.setSize(x - windowX, height);
+        win.setSize(x - windowX, height);
         break;
       case 'bottomRight':
-        this.window.setSize(x - windowX, y - windowY);
+        win.setSize(x - windowX, y - windowY);
         break;
     }
   }
 
   dispose(): void {
     this.window = null;
+    WindowManager.instance = null;
   }
 }
 

@@ -4,7 +4,7 @@ import { Screen, WindowPosition, WindowSize } from './types';
 export interface IElectronAPI {
   // Widget management
   listWidgets: () => Promise<WidgetConfig[]>;
-  addWidget: (widget: any) => Promise<any>;
+  addWidget: (config: any) => Promise<any>;
   updateWidget: (id: string, updates: any) => Promise<any>;
   deleteWidget: (id: string) => Promise<void>;
   
@@ -25,6 +25,12 @@ export interface IElectronAPI {
   getSettings: () => Promise<any>;
   updateSettings: (updates: any) => Promise<any>;
   resetSettings: () => Promise<any>;
+
+  // Window drag and resize events
+  onStartDrag: () => void;
+  onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => void;
+  onMouseMove: (x: number, y: number) => void;
+  onMouseUp: () => void;
 }
 
 declare global {

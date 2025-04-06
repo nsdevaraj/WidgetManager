@@ -18506,42 +18506,55 @@ function initializeIpcHandlers() {
         return settingsManager.resetSettings();
     }));
     // Window operations
-    electron_1.ipcMain.handle('window:get-position', (event) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        return windowManager.getPosition();
-    });
-    electron_1.ipcMain.handle('window:set-position', (event, x, y) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        windowManager.setPosition(x, y);
-    });
-    electron_1.ipcMain.handle('window:minimize', (event) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        windowManager.minimize();
-    });
-    electron_1.ipcMain.handle('window:maximize', (event) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        windowManager.maximize();
-    });
-    electron_1.ipcMain.handle('window:restore', (event) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        windowManager.restore();
-    });
-    electron_1.ipcMain.handle('window:close', (event) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        windowManager.close();
-    });
+    electron_1.ipcMain.handle('window:get-position', (event) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            return windowManager.getPosition();
+        }
+        catch (error) {
+            console.error('Failed to get window position:', error);
+            return { x: 0, y: 0 };
+        }
+    }));
+    electron_1.ipcMain.handle('window:set-position', (event, x, y) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            windowManager.setPosition(x, y);
+        }
+        catch (error) {
+            console.error('Failed to set window position:', error);
+        }
+    }));
+    electron_1.ipcMain.handle('window:minimize', (event) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            windowManager.minimize();
+        }
+        catch (error) {
+            console.error('Failed to minimize window:', error);
+        }
+    }));
+    electron_1.ipcMain.handle('window:maximize', (event) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            windowManager.maximize();
+        }
+        catch (error) {
+            console.error('Failed to maximize window:', error);
+        }
+    }));
+    electron_1.ipcMain.handle('window:restore', (event) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            windowManager.restore();
+        }
+        catch (error) {
+            console.error('Failed to restore window:', error);
+        }
+    }));
+    electron_1.ipcMain.handle('window:close', (event) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            windowManager.close();
+        }
+        catch (error) {
+            console.error('Failed to close window:', error);
+        }
+    }));
     // Window drag and resize events
     electron_1.ipcMain.on('window:start-drag', () => {
         isDragging = true;
@@ -18551,14 +18564,16 @@ function initializeIpcHandlers() {
         resizeDirection = direction;
     });
     electron_1.ipcMain.on('window:mouse-move', (event, { x, y }) => {
-        const win = electron_1.BrowserWindow.fromWebContents(event.sender);
-        if (win)
-            windowManager.setWindow(win);
-        if (isDragging) {
-            windowManager.handleDrag(x, y);
+        try {
+            if (isDragging) {
+                windowManager.handleDrag(x, y);
+            }
+            else if (isResizing) {
+                windowManager.handleResize(resizeDirection, x, y);
+            }
         }
-        else if (isResizing) {
-            windowManager.handleResize(resizeDirection, x, y);
+        catch (error) {
+            console.error('Failed to handle window movement:', error);
         }
     });
     electron_1.ipcMain.on('window:mouse-up', () => {
@@ -19080,12 +19095,13 @@ exports.initializeWidgetManagement = initializeWidgetManagement;
 /*!************************************!*\
   !*** ./src/main/window-manager.ts ***!
   \************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initializeWindowManagement = exports.WindowManager = void 0;
+const electron_1 = __webpack_require__(/*! electron */ "electron");
 class WindowManager {
     constructor() {
         this.window = null;
@@ -19098,73 +19114,80 @@ class WindowManager {
     }
     setWindow(window) {
         this.window = window;
+        // Listen for window destruction
+        window.on('closed', () => {
+            if (this.window === window) {
+                this.window = null;
+            }
+        });
+    }
+    ensureWindow() {
+        if (!this.window || this.window.isDestroyed()) {
+            // Get the focused window or the first window
+            this.window = electron_1.BrowserWindow.getFocusedWindow() || electron_1.BrowserWindow.getAllWindows()[0];
+            if (!this.window || this.window.isDestroyed()) {
+                throw new Error('No valid window available');
+            }
+        }
+        return this.window;
     }
     getPosition() {
-        if (!this.window)
-            return { x: 0, y: 0 };
-        const [x, y] = this.window.getPosition();
+        const win = this.ensureWindow();
+        const [x, y] = win.getPosition();
         return { x, y };
     }
     setPosition(x, y) {
-        if (!this.window)
-            return;
-        this.window.setPosition(x, y);
+        const win = this.ensureWindow();
+        win.setPosition(x, y);
     }
     minimize() {
-        if (!this.window)
-            return;
-        this.window.minimize();
+        const win = this.ensureWindow();
+        win.minimize();
     }
     maximize() {
-        if (!this.window)
-            return;
-        this.window.maximize();
+        const win = this.ensureWindow();
+        win.maximize();
     }
     restore() {
-        if (!this.window)
-            return;
-        this.window.restore();
+        const win = this.ensureWindow();
+        win.restore();
     }
     close() {
-        if (!this.window)
-            return;
-        this.window.close();
+        const win = this.ensureWindow();
+        win.close();
     }
     getSize() {
-        if (!this.window)
-            return { width: 800, height: 600 };
-        const [width, height] = this.window.getSize();
+        const win = this.ensureWindow();
+        const [width, height] = win.getSize();
         return { width, height };
     }
     setSize(size) {
-        if (!this.window)
-            return;
-        this.window.setSize(size.width, size.height);
+        const win = this.ensureWindow();
+        win.setSize(size.width, size.height);
     }
     handleDrag(x, y) {
-        if (!this.window)
-            return;
-        this.window.setPosition(x, y);
+        const win = this.ensureWindow();
+        win.setPosition(x, y);
     }
     handleResize(direction, x, y) {
-        if (!this.window)
-            return;
-        const [width, height] = this.window.getSize();
-        const [windowX, windowY] = this.window.getPosition();
+        const win = this.ensureWindow();
+        const [width, height] = win.getSize();
+        const [windowX, windowY] = win.getPosition();
         switch (direction) {
             case 'bottom':
-                this.window.setSize(width, y - windowY);
+                win.setSize(width, y - windowY);
                 break;
             case 'right':
-                this.window.setSize(x - windowX, height);
+                win.setSize(x - windowX, height);
                 break;
             case 'bottomRight':
-                this.window.setSize(x - windowX, y - windowY);
+                win.setSize(x - windowX, y - windowY);
                 break;
         }
     }
     dispose() {
         this.window = null;
+        WindowManager.instance = null;
     }
 }
 exports.WindowManager = WindowManager;
