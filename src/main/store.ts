@@ -65,6 +65,10 @@ const store = new Store<StoreSchema>({
 
 // Helper functions for store operations
 export const storeHelpers = {
+  getWidgets: (): WidgetConfig[] => {
+    return store.get('widgets', []);
+  },
+
   addWidget: (widget: Omit<WidgetConfig, 'id'>): WidgetConfig => {
     const widgets = store.get('widgets', []);
     const newWidget: WidgetConfig = {
@@ -107,6 +111,14 @@ export const storeHelpers = {
         openAtLogin: updates.startAtLogin
       });
     }
+  },
+
+  getSettings: (): AppSettings => {
+    return store.get('settings', defaultAppSettings);
+  },
+
+  resetSettings: (): void => {
+    store.set('settings', defaultAppSettings);
   },
 
   // Export configuration

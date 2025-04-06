@@ -23,13 +23,21 @@ export class WindowManager {
         this.window = null;
       }
     });
+
+    // Listen for window ready-to-show
+    window.on('ready-to-show', () => {
+      if (this.window === window && !window.isDestroyed()) {
+        window.show();
+      }
+    });
   }
 
   private ensureWindow(): BrowserWindow {
     if (!this.window || this.window.isDestroyed()) {
-      // Get the focused window or the first window
-      this.window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-      if (!this.window || this.window.isDestroyed()) {
+      const windows = BrowserWindow.getAllWindows();
+      this.window = windows.find(win => !win.isDestroyed()) || null;
+      
+      if (!this.window) {
         throw new Error('No valid window available');
       }
     }
@@ -37,67 +45,134 @@ export class WindowManager {
   }
 
   getPosition(): WindowPosition {
-    const win = this.ensureWindow();
-    const [x, y] = win.getPosition();
-    return { x, y };
+    try {
+      const win = this.ensureWindow();
+      const [x, y] = win.getPosition();
+      return { x, y };
+    } catch (error) {
+      console.error('Failed to get window position:', error);
+      return { x: 0, y: 0 };
+    }
   }
 
   setPosition(x: number, y: number): void {
-    const win = this.ensureWindow();
-    win.setPosition(x, y);
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        win.setPosition(x, y);
+      }
+    } catch (error) {
+      console.error('Failed to set window position:', error);
+    }
   }
 
   minimize(): void {
-    const win = this.ensureWindow();
-    win.minimize();
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed() && !win.isMinimized()) {
+        win.minimize();
+      }
+    } catch (error) {
+      console.error('Failed to minimize window:', error);
+    }
   }
 
   maximize(): void {
-    const win = this.ensureWindow();
-    win.maximize();
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed() && !win.isMaximized()) {
+        win.maximize();
+      }
+    } catch (error) {
+      console.error('Failed to maximize window:', error);
+    }
   }
 
   restore(): void {
-    const win = this.ensureWindow();
-    win.restore();
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        if (win.isMaximized()) {
+          win.unmaximize();
+        } else if (win.isMinimized()) {
+          win.restore();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore window:', error);
+    }
   }
 
   close(): void {
-    const win = this.ensureWindow();
-    win.close();
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        win.close();
+      }
+    } catch (error) {
+      console.error('Failed to close window:', error);
+    }
   }
 
   getSize(): WindowSize {
-    const win = this.ensureWindow();
-    const [width, height] = win.getSize();
-    return { width, height };
+    try {
+      const win = this.ensureWindow();
+      const [width, height] = win.getSize();
+      return { width, height };
+    } catch (error) {
+      console.error('Failed to get window size:', error);
+      return { width: 800, height: 600 };
+    }
   }
 
   setSize(size: WindowSize): void {
-    const win = this.ensureWindow();
-    win.setSize(size.width, size.height);
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        win.setSize(size.width, size.height);
+      }
+    } catch (error) {
+      console.error('Failed to set window size:', error);
+    }
   }
 
   handleDrag(x: number, y: number): void {
-    const win = this.ensureWindow();
-    win.setPosition(x, y);
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        win.setPosition(x, y);
+      }
+    } catch (error) {
+      console.error('Failed to handle window drag:', error);
+    }
   }
 
   handleResize(direction: 'bottom' | 'right' | 'bottomRight', x: number, y: number): void {
-    const win = this.ensureWindow();
-    const [width, height] = win.getSize();
-    const [windowX, windowY] = win.getPosition();
+    try {
+      const win = this.ensureWindow();
+      if (!win.isDestroyed()) {
+        const [width, height] = win.getSize();
+        const [windowX, windowY] = win.getPosition();
+        const minWidth = win.getBounds().width;
+        const minHeight = win.getBounds().height;
 
-    switch (direction) {
-      case 'bottom':
-        win.setSize(width, y - windowY);
-        break;
-      case 'right':
-        win.setSize(x - windowX, height);
-        break;
-      case 'bottomRight':
-        win.setSize(x - windowX, y - windowY);
-        break;
+        switch (direction) {
+          case 'bottom':
+            win.setSize(width, Math.max(y - windowY, minHeight));
+            break;
+          case 'right':
+            win.setSize(Math.max(x - windowX, minWidth), height);
+            break;
+          case 'bottomRight':
+            win.setSize(
+              Math.max(x - windowX, minWidth),
+              Math.max(y - windowY, minHeight)
+            );
+            break;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to handle window resize:', error);
     }
   }
 

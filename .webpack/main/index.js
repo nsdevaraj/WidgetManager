@@ -18881,6 +18881,9 @@ const store = new electron_store_1.default({
 exports.store = store;
 // Helper functions for store operations
 exports.storeHelpers = {
+    getWidgets: () => {
+        return store.get('widgets', []);
+    },
     addWidget: (widget) => {
         const widgets = store.get('widgets', []);
         const newWidget = Object.assign(Object.assign(Object.assign({}, config_1.defaultWidgetConfig), widget), { id: Date.now().toString() });
@@ -18915,6 +18918,12 @@ exports.storeHelpers = {
                 openAtLogin: updates.startAtLogin
             });
         }
+    },
+    getSettings: () => {
+        return store.get('settings', config_1.defaultAppSettings);
+    },
+    resetSettings: () => {
+        store.set('settings', config_1.defaultAppSettings);
     },
     // Export configuration
     exportConfig: () => {
@@ -19040,15 +19049,21 @@ exports.destroyTray = destroyTray;
 /*!************************************!*\
   !*** ./src/main/widget-manager.ts ***!
   \************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initializeWidgetManagement = exports.WidgetManager = void 0;
+const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
 class WidgetManager {
     constructor() {
+        // Initialize widgets from store
         this.widgets = new Map();
+        const storedWidgets = store_1.storeHelpers.getWidgets();
+        storedWidgets.forEach((widget) => {
+            this.widgets.set(widget.id, widget);
+        });
     }
     static getInstance() {
         if (!WidgetManager.instance) {
@@ -19057,24 +19072,52 @@ class WidgetManager {
         return WidgetManager.instance;
     }
     addWidget(widget) {
-        this.widgets.set(widget.id, widget);
-        return Promise.resolve(widget);
+        try {
+            // Use storeHelpers to add widget with proper validation and ID generation
+            const newWidget = store_1.storeHelpers.addWidget(widget);
+            this.widgets.set(newWidget.id, newWidget);
+            return Promise.resolve(newWidget);
+        }
+        catch (error) {
+            console.error('Failed to add widget:', error);
+            return Promise.reject(error);
+        }
     }
     removeWidget(id) {
-        this.widgets.delete(id);
-        return Promise.resolve();
+        try {
+            store_1.storeHelpers.removeWidget(id);
+            this.widgets.delete(id);
+            return Promise.resolve();
+        }
+        catch (error) {
+            console.error('Failed to remove widget:', error);
+            return Promise.reject(error);
+        }
     }
     updateWidget(id, updates) {
-        const widget = this.widgets.get(id);
-        if (!widget) {
-            return Promise.reject(new Error(`Widget with id ${id} not found`));
+        try {
+            const widget = this.widgets.get(id);
+            if (!widget) {
+                throw new Error(`Widget with id ${id} not found`);
+            }
+            store_1.storeHelpers.updateWidget(id, updates);
+            const updatedWidget = Object.assign(Object.assign({}, widget), updates);
+            this.widgets.set(id, updatedWidget);
+            return Promise.resolve(updatedWidget);
         }
-        const updatedWidget = Object.assign(Object.assign({}, widget), updates);
-        this.widgets.set(id, updatedWidget);
-        return Promise.resolve(updatedWidget);
+        catch (error) {
+            console.error('Failed to update widget:', error);
+            return Promise.reject(error);
+        }
     }
     listWidgets() {
-        return Promise.resolve(Array.from(this.widgets.values()));
+        try {
+            return Promise.resolve(Array.from(this.widgets.values()));
+        }
+        catch (error) {
+            console.error('Failed to list widgets:', error);
+            return Promise.reject(error);
+        }
     }
     dispose() {
         this.widgets.clear();
@@ -19120,69 +19163,150 @@ class WindowManager {
                 this.window = null;
             }
         });
+        // Listen for window ready-to-show
+        window.on('ready-to-show', () => {
+            if (this.window === window && !window.isDestroyed()) {
+                window.show();
+            }
+        });
     }
     ensureWindow() {
         if (!this.window || this.window.isDestroyed()) {
-            // Get the focused window or the first window
-            this.window = electron_1.BrowserWindow.getFocusedWindow() || electron_1.BrowserWindow.getAllWindows()[0];
-            if (!this.window || this.window.isDestroyed()) {
+            const windows = electron_1.BrowserWindow.getAllWindows();
+            this.window = windows.find(win => !win.isDestroyed()) || null;
+            if (!this.window) {
                 throw new Error('No valid window available');
             }
         }
         return this.window;
     }
     getPosition() {
-        const win = this.ensureWindow();
-        const [x, y] = win.getPosition();
-        return { x, y };
+        try {
+            const win = this.ensureWindow();
+            const [x, y] = win.getPosition();
+            return { x, y };
+        }
+        catch (error) {
+            console.error('Failed to get window position:', error);
+            return { x: 0, y: 0 };
+        }
     }
     setPosition(x, y) {
-        const win = this.ensureWindow();
-        win.setPosition(x, y);
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                win.setPosition(x, y);
+            }
+        }
+        catch (error) {
+            console.error('Failed to set window position:', error);
+        }
     }
     minimize() {
-        const win = this.ensureWindow();
-        win.minimize();
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed() && !win.isMinimized()) {
+                win.minimize();
+            }
+        }
+        catch (error) {
+            console.error('Failed to minimize window:', error);
+        }
     }
     maximize() {
-        const win = this.ensureWindow();
-        win.maximize();
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed() && !win.isMaximized()) {
+                win.maximize();
+            }
+        }
+        catch (error) {
+            console.error('Failed to maximize window:', error);
+        }
     }
     restore() {
-        const win = this.ensureWindow();
-        win.restore();
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                if (win.isMaximized()) {
+                    win.unmaximize();
+                }
+                else if (win.isMinimized()) {
+                    win.restore();
+                }
+            }
+        }
+        catch (error) {
+            console.error('Failed to restore window:', error);
+        }
     }
     close() {
-        const win = this.ensureWindow();
-        win.close();
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                win.close();
+            }
+        }
+        catch (error) {
+            console.error('Failed to close window:', error);
+        }
     }
     getSize() {
-        const win = this.ensureWindow();
-        const [width, height] = win.getSize();
-        return { width, height };
+        try {
+            const win = this.ensureWindow();
+            const [width, height] = win.getSize();
+            return { width, height };
+        }
+        catch (error) {
+            console.error('Failed to get window size:', error);
+            return { width: 800, height: 600 };
+        }
     }
     setSize(size) {
-        const win = this.ensureWindow();
-        win.setSize(size.width, size.height);
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                win.setSize(size.width, size.height);
+            }
+        }
+        catch (error) {
+            console.error('Failed to set window size:', error);
+        }
     }
     handleDrag(x, y) {
-        const win = this.ensureWindow();
-        win.setPosition(x, y);
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                win.setPosition(x, y);
+            }
+        }
+        catch (error) {
+            console.error('Failed to handle window drag:', error);
+        }
     }
     handleResize(direction, x, y) {
-        const win = this.ensureWindow();
-        const [width, height] = win.getSize();
-        const [windowX, windowY] = win.getPosition();
-        switch (direction) {
-            case 'bottom':
-                win.setSize(width, y - windowY);
-                break;
-            case 'right':
-                win.setSize(x - windowX, height);
-                break;
-            case 'bottomRight':
-                win.setSize(x - windowX, y - windowY);
-                break;
+        try {
+            const win = this.ensureWindow();
+            if (!win.isDestroyed()) {
+                const [width, height] = win.getSize();
+                const [windowX, windowY] = win.getPosition();
+                const minWidth = win.getBounds().width;
+                const minHeight = win.getBounds().height;
+                switch (direction) {
+                    case 'bottom':
+                        win.setSize(width, Math.max(y - windowY, minHeight));
+                        break;
+                    case 'right':
+                        win.setSize(Math.max(x - windowX, minWidth), height);
+                        break;
+                    case 'bottomRight':
+                        win.setSize(Math.max(x - windowX, minWidth), Math.max(y - windowY, minHeight));
+                        break;
+                }
+            }
+        }
+        catch (error) {
+            console.error('Failed to handle window resize:', error);
         }
     }
     dispose() {
