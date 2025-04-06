@@ -76,6 +76,11 @@ contextBridge.exposeInMainWorld(
       window.addEventListener('mouseup', mouseUpHandler);
     },
 
+    // Screen management
+    getScreens: () => ipcRenderer.invoke('screen:get-all'),
+    getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),
+    getCurrentScreen: () => ipcRenderer.invoke('screen:get-current'),
+
     // Add any other APIs you want to expose to the renderer process here
     // Example: send: (channel: string, data: any) => ipcRenderer.send(channel, data),
     // Example: receive: (channel: string, func: Function) => ipcRenderer.on(channel, func),

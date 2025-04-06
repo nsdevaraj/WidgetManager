@@ -77,4 +77,29 @@ export const validateAppSettings = (settings: unknown): AppSettings => {
 
 export const validateStoreSchema = (store: unknown): StoreSchema => {
   return storeSchema.parse(store);
-}; 
+};
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
+export type WidgetType = 'clock' | 'weather' | 'notes' | 'calendar';
+
+export interface WidgetConfig {
+  id: string;
+  type: WidgetType;
+  position: Position;
+  size: Size;
+  isVisible?: boolean;
+  settings?: {
+    isAlwaysOnTop?: boolean;
+    opacity?: number;
+    customCSS?: string;
+  };
+} 

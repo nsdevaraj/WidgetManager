@@ -10,6 +10,24 @@ export interface WindowSize {
   height: number;
 }
 
+export interface Screen {
+  id: number;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  workArea: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  scaleFactor: number;
+  isPrimary: boolean;
+}
+
 export interface IElectronAPI {
   // Widget operations
   addWidget: (widget: Omit<WidgetConfig, 'id'>) => Promise<void>;
@@ -33,6 +51,11 @@ export interface IElectronAPI {
   setWindowSize: (size: WindowSize) => void;
   startWindowDrag: () => void;
   startWindowResize: (direction: 'bottom' | 'right' | 'bottomRight') => void;
+
+  // Screen management
+  getScreens: () => Promise<Screen[]>;
+  getPrimaryScreen: () => Promise<Screen>;
+  getCurrentScreen: () => Promise<Screen>;
 }
 
 declare global {

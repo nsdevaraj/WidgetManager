@@ -1,5 +1,9 @@
 import { app, BrowserWindow } from 'electron';
-import { WindowManager } from './window-manager';
+import * as path from 'path';
+import { initializeWindowManagement } from './window-manager';
+import { initializeScreenManagement } from './screen-manager';
+import { initializeWidgetManagement } from './widget-manager';
+import { initializeSettingsManagement } from './settings-manager';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -23,7 +27,7 @@ export const createWindow = (): BrowserWindow => {
       contextIsolation: true, // Enable context isolation
       sandbox: true, // Enable sandboxing
       webviewTag: false, // Disable webview tag for security
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY, // Use webpack preload entry point
+      preload: path.join(__dirname, 'preload.js'),
     },
     // Set minimum dimensions
     minWidth: 400,
@@ -32,8 +36,11 @@ export const createWindow = (): BrowserWindow => {
     show: false,
   });
 
-  // Initialize window manager
-  windowManager = new WindowManager(mainWindow);
+  // Initialize all managers
+  initializeWindowManagement(mainWindow);
+  initializeScreenManagement();
+  initializeWidgetManagement();
+  initializeSettingsManagement();
 
   // Handle window loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
@@ -68,4 +75,26 @@ export const createWindow = (): BrowserWindow => {
   });
 
   return mainWindow;
-}; 
+};
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', function () {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+}); 

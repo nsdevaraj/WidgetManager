@@ -1,26 +1,53 @@
 import React, { useEffect, useState } from 'react';
+import { Widget } from './Widget';
 import { WidgetConfig } from '../../types/config';
-import Widget from './Widget';
+import { Screen } from '../../types/window';
+import { constrainPosition, calculateInitialPosition } from '../utils/screen';
 import './WidgetContainer.css';
 
-const WidgetContainer: React.FC = () => {
+export const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [screens, setScreens] = useState<Screen[]>([]);
 
   useEffect(() => {
-    // Load widgets on mount
+    // Load initial widgets
     window.api.listWidgets().then(setWidgets);
+
+    // Load screens
+    window.api.getScreens().then(setScreens);
+
+    // Listen for screen changes
+    const handleScreenUpdate = () => {
+      window.api.getScreens().then(setScreens);
+    };
+
+    window.addEventListener('resize', handleScreenUpdate);
+    return () => window.removeEventListener('resize', handleScreenUpdate);
   }, []);
 
-  const handlePositionChange = async (id: string, position: { x: number; y: number }) => {
-    // Update widget position in state
-    setWidgets(prevWidgets =>
-      prevWidgets.map(widget =>
-        widget.id === id ? { ...widget, position } : widget
-      )
-    );
+  const handleDragEnd = async (id: string, position: { x: number; y: number }) => {
+    // Constrain the position to screen bounds
+    const constrainedPosition = constrainPosition(position, { width: 300, height: 200 }, screens);
+    
+    // Update widget position
+    await window.api.updateWidget(id, { position: constrainedPosition });
+    
+    // Refresh widget list
+    const updatedWidgets = await window.api.listWidgets();
+    setWidgets(updatedWidgets);
+  };
 
-    // Persist position change
-    await window.api.updateWidget(id, { position });
+  const handleAddWidget = async () => {
+    const initialPosition = calculateInitialPosition({ width: 300, height: 200 });
+    await window.api.addWidget({
+      type: 'clock',
+      position: initialPosition,
+      size: { width: 300, height: 200 }
+    });
+
+    // Refresh widget list
+    const updatedWidgets = await window.api.listWidgets();
+    setWidgets(updatedWidgets);
   };
 
   return (
@@ -28,12 +55,10 @@ const WidgetContainer: React.FC = () => {
       {widgets.map(widget => (
         <Widget
           key={widget.id}
-          widget={widget}
-          onPositionChange={handlePositionChange}
+          config={widget}
+          onDragEnd={(position) => handleDragEnd(widget.id, position)}
         />
       ))}
     </div>
   );
-};
-
-export default WidgetContainer; 
+}; 
