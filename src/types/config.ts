@@ -19,11 +19,11 @@ export const widgetConfigSchema = z.object({
   position: z.object({
     x: z.number(),
     y: z.number()
-  }),
+  }).strict(),
   size: z.object({
     width: z.number().min(50),
     height: z.number().min(50)
-  }),
+  }).strict(),
   isVisible: z.boolean().optional(),
   settings: z.object({
     isAlwaysOnTop: z.boolean().optional(),
@@ -37,18 +37,18 @@ export const appSettingsSchema = z.object({
   defaultSize: z.object({
     width: z.number().min(50),
     height: z.number().min(50)
-  }),
+  }).strict(),
   gridSnapping: z.boolean(),
   theme: z.enum(['light', 'dark', 'system']),
   startupBehavior: z.enum(['restore', 'minimized']),
   startAtLogin: z.boolean()
-});
+}).strict();
 
 // Store schema combining both widgets and settings
 export const storeSchema = z.object({
   widgets: z.array(widgetConfigSchema),
   settings: appSettingsSchema
-});
+}).strict();
 
 // TypeScript types derived from the schemas
 export type WidgetConfig = z.infer<typeof widgetConfigSchema>;

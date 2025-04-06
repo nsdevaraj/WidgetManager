@@ -18840,6 +18840,38 @@ exports.store = exports.storeHelpers = void 0;
 const electron_store_1 = __importDefault(__webpack_require__(/*! electron-store */ "./node_modules/electron-store/index.js"));
 const electron_1 = __webpack_require__(/*! electron */ "electron");
 const config_1 = __webpack_require__(/*! ../types/config */ "./src/types/config.ts");
+// Validation functions
+const validatePosition = (position) => {
+    if (typeof (position === null || position === void 0 ? void 0 : position.x) !== 'number' || typeof (position === null || position === void 0 ? void 0 : position.y) !== 'number') {
+        throw new Error('Invalid position coordinates');
+    }
+    if (Math.abs(position.x) > 10000 || Math.abs(position.y) > 10000) {
+        throw new Error('Position coordinates out of bounds');
+    }
+    return { x: position.x, y: position.y };
+};
+const validateWidgetUpdate = (widget, updates) => {
+    // Validate position updates
+    if (updates.position) {
+        const validatedPosition = validatePosition(updates.position);
+        updates.position = validatedPosition;
+    }
+    // Validate size updates
+    if (updates.size) {
+        if (updates.size.width < 50 || updates.size.height < 50) {
+            throw new Error('Widget size too small');
+        }
+        if (updates.size.width > 2000 || updates.size.height > 2000) {
+            throw new Error('Widget size too large');
+        }
+    }
+    // Ensure required fields aren't removed
+    const updatedWidget = Object.assign(Object.assign({}, widget), updates);
+    if (!updatedWidget.id || !updatedWidget.type || !updatedWidget.position || !updatedWidget.size) {
+        throw new Error('Required widget fields cannot be removed');
+    }
+    return updatedWidget;
+};
 // Create store instance with proper typing
 const store = new electron_store_1.default({
     defaults: {
@@ -18882,63 +18914,121 @@ exports.store = store;
 // Helper functions for store operations
 exports.storeHelpers = {
     getWidgets: () => {
-        return store.get('widgets', []);
+        try {
+            const widgets = store.get('widgets', []);
+            // Validate all widgets on load
+            widgets.forEach(config_1.validateWidgetConfig);
+            return widgets;
+        }
+        catch (error) {
+            console.error('Error loading widgets:', error);
+            return [];
+        }
     },
     addWidget: (widget) => {
-        const widgets = store.get('widgets', []);
-        const newWidget = Object.assign(Object.assign(Object.assign({}, config_1.defaultWidgetConfig), widget), { id: Date.now().toString() });
-        (0, config_1.validateWidgetConfig)(newWidget);
-        store.set('widgets', [...widgets, newWidget]);
-        return newWidget;
+        try {
+            const widgets = store.get('widgets', []);
+            const newWidget = Object.assign(Object.assign(Object.assign({}, config_1.defaultWidgetConfig), widget), { id: Date.now().toString() });
+            (0, config_1.validateWidgetConfig)(newWidget);
+            validatePosition(newWidget.position);
+            store.set('widgets', [...widgets, newWidget]);
+            return newWidget;
+        }
+        catch (error) {
+            console.error('Error adding widget:', error);
+            throw error;
+        }
     },
     removeWidget: (id) => {
-        const widgets = store.get('widgets', []);
-        store.set('widgets', widgets.filter((w) => w.id !== id));
+        try {
+            const widgets = store.get('widgets', []);
+            store.set('widgets', widgets.filter((w) => w.id !== id));
+        }
+        catch (error) {
+            console.error('Error removing widget:', error);
+            throw error;
+        }
     },
     updateWidget: (id, updates) => {
-        const widgets = store.get('widgets', []);
-        const updatedWidgets = widgets.map((w) => {
-            if (w.id === id) {
-                const updatedWidget = Object.assign(Object.assign({}, w), updates);
-                (0, config_1.validateWidgetConfig)(updatedWidget);
-                return updatedWidget;
-            }
-            return w;
-        });
-        store.set('widgets', updatedWidgets);
+        try {
+            const widgets = store.get('widgets', []);
+            const updatedWidgets = widgets.map((w) => {
+                if (w.id === id) {
+                    const updatedWidget = validateWidgetUpdate(w, updates);
+                    (0, config_1.validateWidgetConfig)(updatedWidget);
+                    return updatedWidget;
+                }
+                return w;
+            });
+            store.set('widgets', updatedWidgets);
+        }
+        catch (error) {
+            console.error('Error updating widget:', error);
+            throw error;
+        }
     },
     updateSettings: (updates) => {
-        const settings = store.get('settings', config_1.defaultAppSettings);
-        const updatedSettings = Object.assign(Object.assign({}, settings), updates);
-        (0, config_1.validateAppSettings)(updatedSettings);
-        store.set('settings', updatedSettings);
-        // Handle special settings
-        if (updates.startAtLogin !== undefined) {
-            electron_1.app.setLoginItemSettings({
-                openAtLogin: updates.startAtLogin
-            });
+        try {
+            const settings = store.get('settings', config_1.defaultAppSettings);
+            const updatedSettings = Object.assign(Object.assign({}, settings), updates);
+            (0, config_1.validateAppSettings)(updatedSettings);
+            store.set('settings', updatedSettings);
+            // Handle special settings
+            if (updates.startAtLogin !== undefined) {
+                electron_1.app.setLoginItemSettings({
+                    openAtLogin: updates.startAtLogin
+                });
+            }
+        }
+        catch (error) {
+            console.error('Error updating settings:', error);
+            throw error;
         }
     },
     getSettings: () => {
-        return store.get('settings', config_1.defaultAppSettings);
+        try {
+            return store.get('settings', config_1.defaultAppSettings);
+        }
+        catch (error) {
+            console.error('Error getting settings:', error);
+            return config_1.defaultAppSettings;
+        }
     },
     resetSettings: () => {
-        store.set('settings', config_1.defaultAppSettings);
+        try {
+            store.set('settings', config_1.defaultAppSettings);
+        }
+        catch (error) {
+            console.error('Error resetting settings:', error);
+            throw error;
+        }
     },
     // Export configuration
     exportConfig: () => {
-        const data = {
-            widgets: store.get('widgets', []),
-            settings: store.get('settings', config_1.defaultAppSettings)
-        };
-        return (0, config_1.validateStoreSchema)(data);
+        try {
+            const data = {
+                widgets: store.get('widgets', []),
+                settings: store.get('settings', config_1.defaultAppSettings)
+            };
+            return (0, config_1.validateStoreSchema)(data);
+        }
+        catch (error) {
+            console.error('Error exporting config:', error);
+            throw error;
+        }
     },
     // Import configuration
     importConfig: (config) => {
-        const validConfig = (0, config_1.validateStoreSchema)(config);
-        store.clear();
-        store.set('widgets', validConfig.widgets);
-        store.set('settings', validConfig.settings);
+        try {
+            const validConfig = (0, config_1.validateStoreSchema)(config);
+            store.clear();
+            store.set('widgets', validConfig.widgets);
+            store.set('settings', validConfig.settings);
+        }
+        catch (error) {
+            console.error('Error importing config:', error);
+            throw error;
+        }
     },
     // Subscribe to changes
     onConfigChange: (callback) => {
@@ -19344,11 +19434,11 @@ exports.widgetConfigSchema = zod_1.z.object({
     position: zod_1.z.object({
         x: zod_1.z.number(),
         y: zod_1.z.number()
-    }),
+    }).strict(),
     size: zod_1.z.object({
         width: zod_1.z.number().min(50),
         height: zod_1.z.number().min(50)
-    }),
+    }).strict(),
     isVisible: zod_1.z.boolean().optional(),
     settings: zod_1.z.object({
         isAlwaysOnTop: zod_1.z.boolean().optional(),
@@ -19361,17 +19451,17 @@ exports.appSettingsSchema = zod_1.z.object({
     defaultSize: zod_1.z.object({
         width: zod_1.z.number().min(50),
         height: zod_1.z.number().min(50)
-    }),
+    }).strict(),
     gridSnapping: zod_1.z.boolean(),
     theme: zod_1.z.enum(['light', 'dark', 'system']),
     startupBehavior: zod_1.z.enum(['restore', 'minimized']),
     startAtLogin: zod_1.z.boolean()
-});
+}).strict();
 // Store schema combining both widgets and settings
 exports.storeSchema = zod_1.z.object({
     widgets: zod_1.z.array(exports.widgetConfigSchema),
     settings: exports.appSettingsSchema
-});
+}).strict();
 // Default values
 exports.defaultWidgetConfig = {
     position: { x: 0, y: 0 },

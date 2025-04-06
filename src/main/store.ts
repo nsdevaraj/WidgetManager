@@ -27,6 +27,43 @@ interface TypedStore extends Store<StoreSchema> {
   store: StoreSchema;
 }
 
+// Validation functions
+const validatePosition = (position: { x?: number; y?: number }): { x: number; y: number } => {
+  if (typeof position?.x !== 'number' || typeof position?.y !== 'number') {
+    throw new Error('Invalid position coordinates');
+  }
+  if (Math.abs(position.x) > 10000 || Math.abs(position.y) > 10000) {
+    throw new Error('Position coordinates out of bounds');
+  }
+  return { x: position.x, y: position.y };
+};
+
+const validateWidgetUpdate = (widget: WidgetConfig, updates: Partial<WidgetConfig>) => {
+  // Validate position updates
+  if (updates.position) {
+    const validatedPosition = validatePosition(updates.position);
+    updates.position = validatedPosition;
+  }
+
+  // Validate size updates
+  if (updates.size) {
+    if (updates.size.width < 50 || updates.size.height < 50) {
+      throw new Error('Widget size too small');
+    }
+    if (updates.size.width > 2000 || updates.size.height > 2000) {
+      throw new Error('Widget size too large');
+    }
+  }
+
+  // Ensure required fields aren't removed
+  const updatedWidget = { ...widget, ...updates };
+  if (!updatedWidget.id || !updatedWidget.type || !updatedWidget.position || !updatedWidget.size) {
+    throw new Error('Required widget fields cannot be removed');
+  }
+
+  return updatedWidget;
+};
+
 // Create store instance with proper typing
 const store = new Store<StoreSchema>({
   defaults: {
@@ -66,76 +103,125 @@ const store = new Store<StoreSchema>({
 // Helper functions for store operations
 export const storeHelpers = {
   getWidgets: (): WidgetConfig[] => {
-    return store.get('widgets', []);
+    try {
+      const widgets = store.get('widgets', []);
+      // Validate all widgets on load
+      widgets.forEach(validateWidgetConfig);
+      return widgets;
+    } catch (error) {
+      console.error('Error loading widgets:', error);
+      return [];
+    }
   },
 
   addWidget: (widget: Omit<WidgetConfig, 'id'>): WidgetConfig => {
-    const widgets = store.get('widgets', []);
-    const newWidget: WidgetConfig = {
-      ...defaultWidgetConfig,
-      ...widget,
-      id: Date.now().toString()
-    };
-    validateWidgetConfig(newWidget);
-    store.set('widgets', [...widgets, newWidget]);
-    return newWidget;
+    try {
+      const widgets = store.get('widgets', []);
+      const newWidget: WidgetConfig = {
+        ...defaultWidgetConfig,
+        ...widget,
+        id: Date.now().toString()
+      };
+      validateWidgetConfig(newWidget);
+      validatePosition(newWidget.position);
+      store.set('widgets', [...widgets, newWidget]);
+      return newWidget;
+    } catch (error) {
+      console.error('Error adding widget:', error);
+      throw error;
+    }
   },
 
   removeWidget: (id: string): void => {
-    const widgets = store.get('widgets', []);
-    store.set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
+    try {
+      const widgets = store.get('widgets', []);
+      store.set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
+    } catch (error) {
+      console.error('Error removing widget:', error);
+      throw error;
+    }
   },
 
   updateWidget: (id: string, updates: Partial<WidgetConfig>): void => {
-    const widgets = store.get('widgets', []);
-    const updatedWidgets = widgets.map((w: WidgetConfig) => {
-      if (w.id === id) {
-        const updatedWidget = { ...w, ...updates };
-        validateWidgetConfig(updatedWidget);
-        return updatedWidget;
-      }
-      return w;
-    });
-    store.set('widgets', updatedWidgets);
+    try {
+      const widgets = store.get('widgets', []);
+      const updatedWidgets = widgets.map((w: WidgetConfig) => {
+        if (w.id === id) {
+          const updatedWidget = validateWidgetUpdate(w, updates);
+          validateWidgetConfig(updatedWidget);
+          return updatedWidget;
+        }
+        return w;
+      });
+      store.set('widgets', updatedWidgets);
+    } catch (error) {
+      console.error('Error updating widget:', error);
+      throw error;
+    }
   },
 
   updateSettings: (updates: Partial<AppSettings>): void => {
-    const settings = store.get('settings', defaultAppSettings);
-    const updatedSettings = { ...settings, ...updates };
-    validateAppSettings(updatedSettings);
-    store.set('settings', updatedSettings);
+    try {
+      const settings = store.get('settings', defaultAppSettings);
+      const updatedSettings = { ...settings, ...updates };
+      validateAppSettings(updatedSettings);
+      store.set('settings', updatedSettings);
 
-    // Handle special settings
-    if (updates.startAtLogin !== undefined) {
-      app.setLoginItemSettings({
-        openAtLogin: updates.startAtLogin
-      });
+      // Handle special settings
+      if (updates.startAtLogin !== undefined) {
+        app.setLoginItemSettings({
+          openAtLogin: updates.startAtLogin
+        });
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw error;
     }
   },
 
   getSettings: (): AppSettings => {
-    return store.get('settings', defaultAppSettings);
+    try {
+      return store.get('settings', defaultAppSettings);
+    } catch (error) {
+      console.error('Error getting settings:', error);
+      return defaultAppSettings;
+    }
   },
 
   resetSettings: (): void => {
-    store.set('settings', defaultAppSettings);
+    try {
+      store.set('settings', defaultAppSettings);
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      throw error;
+    }
   },
 
   // Export configuration
   exportConfig: (): StoreSchema => {
-    const data = {
-      widgets: store.get('widgets', []),
-      settings: store.get('settings', defaultAppSettings)
-    };
-    return validateStoreSchema(data);
+    try {
+      const data = {
+        widgets: store.get('widgets', []),
+        settings: store.get('settings', defaultAppSettings)
+      };
+      return validateStoreSchema(data);
+    } catch (error) {
+      console.error('Error exporting config:', error);
+      throw error;
+    }
   },
 
   // Import configuration
   importConfig: (config: unknown): void => {
-    const validConfig = validateStoreSchema(config);
-    store.clear();
-    store.set('widgets', validConfig.widgets);
-    store.set('settings', validConfig.settings);
+    try {
+      const validConfig = validateStoreSchema(config);
+      store.clear();
+      store.set('widgets', validConfig.widgets);
+      store.set('settings', validConfig.settings);
+    } catch (error) {
+      console.error('Error importing config:', error);
+      throw error;
+    }
   },
 
   // Subscribe to changes
