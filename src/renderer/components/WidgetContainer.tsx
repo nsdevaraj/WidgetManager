@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Widget } from './Widget';
-import { WidgetConfig } from '../../types/config';
-import { Screen } from '../../types/window';
+import { WidgetConfig, Size } from '../../types/config';
+import { Screen } from '../../types/electron';
 import { constrainPosition, calculateInitialPosition } from '../utils/screen';
 import './WidgetContainer.css';
 
@@ -22,32 +22,40 @@ export const WidgetContainer: React.FC = () => {
     };
 
     window.addEventListener('resize', handleScreenUpdate);
-    return () => window.removeEventListener('resize', handleScreenUpdate);
+    return () => {
+      window.removeEventListener('resize', handleScreenUpdate);
+    };
   }, []);
 
-  const handleDragEnd = async (id: string, position: { x: number; y: number }) => {
-    // Constrain the position to screen bounds
-    const constrainedPosition = constrainPosition(position, { width: 300, height: 200 }, screens);
+  const handleWidgetDragEnd = async (id: string, position: { x: number; y: number }) => {
+    const widget = widgets.find(w => w.id === id);
+    if (!widget) return;
+
+    const size: Size = {
+      width: widget.size.width || 300,
+      height: widget.size.height || 200
+    };
+
+    const constrainedPosition = await constrainPosition(position, size);
     
     // Update widget position
-    await window.api.updateWidget(id, { position: constrainedPosition });
+    const updatedWidget = await window.api.updateWidget(id, { position: constrainedPosition });
     
-    // Refresh widget list
-    const updatedWidgets = await window.api.listWidgets();
-    setWidgets(updatedWidgets);
+    // Update widget in state
+    setWidgets(prevWidgets =>
+      prevWidgets.map(w => w.id === id ? updatedWidget : w)
+    );
   };
 
   const handleAddWidget = async () => {
-    const initialPosition = calculateInitialPosition({ width: 300, height: 200 });
-    await window.api.addWidget({
+    const size: Size = { width: 300, height: 200 };
+    const initialPosition = await calculateInitialPosition(size);
+    const newWidget = await window.api.addWidget({
       type: 'clock',
       position: initialPosition,
-      size: { width: 300, height: 200 }
+      size
     });
-
-    // Refresh widget list
-    const updatedWidgets = await window.api.listWidgets();
-    setWidgets(updatedWidgets);
+    setWidgets(prevWidgets => [...prevWidgets, newWidget]);
   };
 
   return (
@@ -56,9 +64,10 @@ export const WidgetContainer: React.FC = () => {
         <Widget
           key={widget.id}
           config={widget}
-          onDragEnd={(position) => handleDragEnd(widget.id, position)}
+          onDragEnd={(position) => handleWidgetDragEnd(widget.id, position)}
         />
       ))}
+      <button onClick={handleAddWidget}>Add Widget</button>
     </div>
   );
 }; 

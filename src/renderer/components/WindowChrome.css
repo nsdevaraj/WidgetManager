@@ -1,0 +1,45 @@
+.window-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  -webkit-app-region: drag;
+  background-color: transparent;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  z-index: 9999;
+}
+
+.window-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #666;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.window-control:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.window-control.close:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.window-control svg {
+  width: 10px;
+  height: 10px;
+} 

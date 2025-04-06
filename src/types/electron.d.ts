@@ -1,11 +1,28 @@
 import { WidgetConfig } from './config';
-import { Screen, WindowPosition, WindowSize } from './types';
+
+export interface Screen {
+  id: number;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  workArea: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  scaleFactor: number;
+  isPrimary: boolean;
+}
 
 export interface IElectronAPI {
   // Widget management
   listWidgets: () => Promise<WidgetConfig[]>;
-  addWidget: (widget: any) => Promise<any>;
-  updateWidget: (id: string, updates: any) => Promise<any>;
+  addWidget: (config: Partial<WidgetConfig>) => Promise<WidgetConfig>;
+  updateWidget: (id: string, updates: Partial<WidgetConfig>) => Promise<WidgetConfig>;
   deleteWidget: (id: string) => Promise<void>;
   
   // Screen management
@@ -14,23 +31,16 @@ export interface IElectronAPI {
   getCurrentScreen: () => Promise<Screen>;
   
   // Window management
-  getPosition: () => Promise<WindowPosition>;
+  getPosition: () => Promise<{ x: number; y: number }>;
   setPosition: (x: number, y: number) => Promise<void>;
   minimize: () => Promise<void>;
   maximize: () => Promise<void>;
   restore: () => Promise<void>;
   close: () => Promise<void>;
-
-  // Settings management
-  getSettings: () => Promise<any>;
-  updateSettings: (updates: any) => Promise<any>;
-  resetSettings: () => Promise<any>;
 }
 
 declare global {
   interface Window {
     api: IElectronAPI;
   }
-}
-
-export {}; 
+} 

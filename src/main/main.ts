@@ -1,9 +1,10 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { initializeWindowManagement } from './window-manager';
-import { initializeScreenManagement } from './screen-manager';
-import { initializeWidgetManagement } from './widget-manager';
-import { initializeSettingsManagement } from './settings-manager';
+import { WindowManager, initializeWindowManagement } from './window-manager';
+import { ScreenManager, initializeScreenManagement } from './screen-manager';
+import { WidgetManager, initializeWidgetManagement } from './widget-manager';
+import { SettingsManager, initializeSettingsManagement } from './settings-manager';
+import { initializeIpcHandlers } from './ipc';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -13,7 +14,12 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-let windowManager: WindowManager | null = null;
+// Initialize managers at the application level
+let widgetManager = initializeWidgetManagement();
+let settingsManager = initializeSettingsManagement();
+
+// Track if IPC handlers have been initialized
+let ipcHandlersInitialized = false;
 
 export const createWindow = (): BrowserWindow => {
   // Create the browser window.
@@ -27,7 +33,7 @@ export const createWindow = (): BrowserWindow => {
       contextIsolation: true, // Enable context isolation
       sandbox: true, // Enable sandboxing
       webviewTag: false, // Disable webview tag for security
-      preload: path.join(__dirname, 'preload.js'),
+      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
     // Set minimum dimensions
     minWidth: 400,
@@ -36,11 +42,15 @@ export const createWindow = (): BrowserWindow => {
     show: false,
   });
 
-  // Initialize all managers
+  // Initialize window-specific managers
   initializeWindowManagement(mainWindow);
-  initializeScreenManagement();
-  initializeWidgetManagement();
-  initializeSettingsManagement();
+  initializeScreenManagement(mainWindow);
+
+  // Initialize IPC handlers only once
+  if (!ipcHandlersInitialized) {
+    initializeIpcHandlers();
+    ipcHandlersInitialized = true;
+  }
 
   // Handle window loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
@@ -66,14 +76,6 @@ export const createWindow = (): BrowserWindow => {
     mainWindow.webContents.openDevTools();
   }
 
-  // Clean up window manager when window is closed
-  mainWindow.on('closed', () => {
-    if (windowManager) {
-      windowManager.dispose();
-      windowManager = null;
-    }
-  });
-
   return mainWindow;
 };
 
@@ -88,6 +90,18 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// Clean up application-level managers when quitting
+app.on('before-quit', () => {
+  if (widgetManager) {
+    widgetManager.dispose();
+    widgetManager = null;
+  }
+  if (settingsManager) {
+    settingsManager.dispose();
+    settingsManager = null;
+  }
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

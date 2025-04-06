@@ -1,52 +1,76 @@
-import { screen, ipcMain } from 'electron';
-import { Screen } from '../types/window';
+import { screen, ipcMain, Display, BrowserWindow } from 'electron';
+import { Screen } from '../types/types';
 
-/**
- * Convert an Electron Display object to our Screen interface
- */
-const convertDisplay = (display: Electron.Display): Screen => {
-  return {
-    id: display.id.toString(),
-    bounds: display.bounds,
-    workArea: display.workArea,
-    scaleFactor: display.scaleFactor,
-    isPrimary: display.id === screen.getPrimaryDisplay().id
-  };
-};
+export class ScreenManager {
+  private static instance: ScreenManager | null = null;
+  private window: BrowserWindow | null = null;
 
-/**
- * Initialize screen management IPC handlers
- */
-export const initializeScreenManagement = () => {
-  // Get all screens
-  ipcMain.handle('screen:get-all', () => {
-    const displays = screen.getAllDisplays();
-    return displays.map(convertDisplay);
-  });
+  private constructor() {
+    this.initializeHandlers();
+  }
 
-  // Get primary screen
-  ipcMain.handle('screen:get-primary', () => {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    return convertDisplay(primaryDisplay);
-  });
+  static getInstance(): ScreenManager {
+    if (!ScreenManager.instance) {
+      ScreenManager.instance = new ScreenManager();
+    }
+    return ScreenManager.instance;
+  }
 
-  // Get current screen (screen containing cursor)
-  ipcMain.handle('screen:get-current', () => {
-    const cursorPoint = screen.getCursorScreenPoint();
-    const currentDisplay = screen.getDisplayNearestPoint(cursorPoint);
-    return convertDisplay(currentDisplay);
-  });
+  setWindow(window: BrowserWindow) {
+    this.window = window;
+  }
 
-  // Listen for screen changes
-  screen.on('display-added', () => {
-    // Handle screen added
-  });
+  private convertDisplay(display: Display): Screen {
+    return {
+      id: display.id,
+      bounds: display.bounds,
+      workArea: display.workArea,
+      scaleFactor: display.scaleFactor,
+      isPrimary: display.id === screen.getPrimaryDisplay().id
+    };
+  }
 
-  screen.on('display-removed', () => {
-    // Handle screen removed
-  });
+  private initializeHandlers() {
+    ipcMain.handle('screen:get-all', () => {
+      return screen.getAllDisplays().map(this.convertDisplay);
+    });
 
-  screen.on('display-metrics-changed', () => {
-    // Handle screen metrics changed
-  });
-}; 
+    ipcMain.handle('screen:get-primary', () => {
+      return this.convertDisplay(screen.getPrimaryDisplay());
+    });
+
+    ipcMain.handle('screen:get-current', () => {
+      const point = screen.getCursorScreenPoint();
+      const display = screen.getDisplayNearestPoint(point);
+      return this.convertDisplay(display);
+    });
+
+    // Listen for screen changes
+    screen.on('display-added', () => {
+      this.window?.webContents.send('screen:changed');
+    });
+
+    screen.on('display-removed', () => {
+      this.window?.webContents.send('screen:changed');
+    });
+
+    screen.on('display-metrics-changed', () => {
+      this.window?.webContents.send('screen:changed');
+    });
+  }
+
+  dispose() {
+    // Clean up handlers
+    ipcMain.removeHandler('screen:get-all');
+    ipcMain.removeHandler('screen:get-primary');
+    ipcMain.removeHandler('screen:get-current');
+    this.window = null;
+    ScreenManager.instance = null;
+  }
+}
+
+export function initializeScreenManagement(window: BrowserWindow) {
+  const manager = ScreenManager.getInstance();
+  manager.setWindow(window);
+  return manager;
+} 
