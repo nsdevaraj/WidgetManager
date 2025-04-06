@@ -3,9 +3,11 @@ import type { WindowPosition, WindowSize } from '../types/window';
 
 export class WindowManager {
   private window: BrowserWindow;
-  private isDragging: boolean = false;
-  private isResizing: boolean = false;
+  private isDragging = false;
+  private isResizing = false;
   private dragOffset: WindowPosition = { x: 0, y: 0 };
+  private mouseMoveHandler?: (e: Electron.Event, pos: { x: number; y: number }) => void;
+  private mouseUpHandler?: () => void;
 
   constructor(window: BrowserWindow) {
     this.window = window;
@@ -13,6 +15,23 @@ export class WindowManager {
   }
 
   private setupEventHandlers() {
+    // Window control functions
+    ipcMain.on('window:minimize', () => {
+      this.window.minimize();
+    });
+
+    ipcMain.on('window:maximize', () => {
+      if (this.window.isMaximized()) {
+        this.window.unmaximize();
+      } else {
+        this.window.maximize();
+      }
+    });
+
+    ipcMain.on('window:close', () => {
+      this.window.close();
+    });
+
     // Window position and size management
     ipcMain.handle('window:get-position', () => {
       const [x, y] = this.window.getPosition();
@@ -70,7 +89,7 @@ export class WindowManager {
         const cursorPos = JSON.parse(cursorPosStr);
 
         // Handle mouse movement for resizing
-        const mouseMoveHandler = (e: Electron.Event, pos: { x: number; y: number }) => {
+        this.mouseMoveHandler = (e: Electron.Event, pos: { x: number; y: number }) => {
           if (!this.isResizing) return;
 
           const deltaX = pos.x - cursorPos.x;
@@ -95,14 +114,20 @@ export class WindowManager {
         };
 
         // Handle mouse up to stop resizing
-        const mouseUpHandler = () => {
+        this.mouseUpHandler = () => {
           this.isResizing = false;
-          ipcMain.removeListener('window:mouse-move', mouseMoveHandler);
-          ipcMain.removeListener('window:mouse-up', mouseUpHandler);
+          if (this.mouseMoveHandler) {
+            ipcMain.removeListener('window:mouse-move', this.mouseMoveHandler);
+          }
+          if (this.mouseUpHandler) {
+            ipcMain.removeListener('window:mouse-up', this.mouseUpHandler);
+          }
+          this.mouseMoveHandler = undefined;
+          this.mouseUpHandler = undefined;
         };
 
-        ipcMain.on('window:mouse-move', mouseMoveHandler);
-        ipcMain.on('window:mouse-up', mouseUpHandler);
+        ipcMain.on('window:mouse-move', this.mouseMoveHandler);
+        ipcMain.on('window:mouse-up', this.mouseUpHandler);
       } catch (error) {
         console.error('Failed to start window resize:', error);
         this.isResizing = false;
@@ -125,13 +150,33 @@ export class WindowManager {
 
   // Clean up event listeners
   dispose() {
-    ipcMain.removeHandler('window:get-position');
-    ipcMain.removeHandler('window:get-size');
-    ipcMain.removeAllListeners('window:set-position');
-    ipcMain.removeAllListeners('window:set-size');
-    ipcMain.removeAllListeners('window:start-drag');
-    ipcMain.removeAllListeners('window:start-resize');
-    ipcMain.removeAllListeners('window:mouse-move');
-    ipcMain.removeAllListeners('window:mouse-up');
+    try {
+      // Remove all handlers
+      ipcMain.removeHandler('window:get-position');
+      ipcMain.removeHandler('window:get-size');
+
+      // Remove all listeners
+      ipcMain.removeAllListeners('window:minimize');
+      ipcMain.removeAllListeners('window:maximize');
+      ipcMain.removeAllListeners('window:close');
+      ipcMain.removeAllListeners('window:set-position');
+      ipcMain.removeAllListeners('window:set-size');
+      ipcMain.removeAllListeners('window:start-drag');
+      ipcMain.removeAllListeners('window:start-resize');
+      ipcMain.removeAllListeners('window:mouse-move');
+      ipcMain.removeAllListeners('window:mouse-up');
+
+      // Clean up any active handlers
+      if (this.mouseMoveHandler) {
+        ipcMain.removeListener('window:mouse-move', this.mouseMoveHandler);
+      }
+      if (this.mouseUpHandler) {
+        ipcMain.removeListener('window:mouse-up', this.mouseUpHandler);
+      }
+      this.mouseMoveHandler = undefined;
+      this.mouseUpHandler = undefined;
+    } catch (error) {
+      console.error('Error disposing WindowManager:', error);
+    }
   }
 } 

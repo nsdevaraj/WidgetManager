@@ -29,9 +29,9 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke('settings:update', updates),
 
     // Window control functions
-    minimizeWindow: () => ipcRenderer.send('window-control', 'minimize'),
-    maximizeWindow: () => ipcRenderer.send('window-control', 'maximize'),
-    closeWindow: () => ipcRenderer.send('window-control', 'close'),
+    minimizeWindow: () => ipcRenderer.send('window:minimize'),
+    maximizeWindow: () => ipcRenderer.send('window:maximize'),
+    closeWindow: () => ipcRenderer.send('window:close'),
 
     // Window position and size management
     getWindowPosition: () => ipcRenderer.invoke('window:get-position'),

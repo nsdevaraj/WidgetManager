@@ -17,6 +17,16 @@ interface StoreOptions {
   value?: unknown;
 }
 
+// Extend Store type to include the methods we need
+interface TypedStore extends Store<StoreSchema> {
+  get<K extends keyof StoreSchema>(key: K): StoreSchema[K];
+  get<K extends keyof StoreSchema>(key: K, defaultValue: StoreSchema[K]): StoreSchema[K];
+  set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void;
+  onDidAnyChange(callback: (newValue: StoreSchema) => void): () => void;
+  clear(): void;
+  store: StoreSchema;
+}
+
 // Create store instance with proper typing
 const store = new Store<StoreSchema>({
   defaults: {
@@ -40,9 +50,9 @@ const store = new Store<StoreSchema>({
   },
   migrations: {
     // Example migration for future schema changes
-    '>=1.0.0': (migrateStore: any) => {
+    '>=1.0.0': (migrateStore: TypedStore) => {
       try {
-        const data = migrateStore.get('.') as StoreSchema;
+        const data = migrateStore.store;
         validateStoreSchema(data);
       } catch (error) {
         console.error('Migration validation error:', error);
@@ -51,29 +61,29 @@ const store = new Store<StoreSchema>({
       }
     }
   }
-});
+}) as TypedStore;
 
 // Helper functions for store operations
 export const storeHelpers = {
   addWidget: (widget: Omit<WidgetConfig, 'id'>): WidgetConfig => {
-    const widgets = (store as any).get('widgets') ?? [];
+    const widgets = store.get('widgets', []);
     const newWidget: WidgetConfig = {
       ...defaultWidgetConfig,
       ...widget,
       id: Date.now().toString()
     };
     validateWidgetConfig(newWidget);
-    (store as any).set('widgets', [...widgets, newWidget]);
+    store.set('widgets', [...widgets, newWidget]);
     return newWidget;
   },
 
   removeWidget: (id: string): void => {
-    const widgets = (store as any).get('widgets') ?? [];
-    (store as any).set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
+    const widgets = store.get('widgets', []);
+    store.set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
   },
 
   updateWidget: (id: string, updates: Partial<WidgetConfig>): void => {
-    const widgets = (store as any).get('widgets') ?? [];
+    const widgets = store.get('widgets', []);
     const updatedWidgets = widgets.map((w: WidgetConfig) => {
       if (w.id === id) {
         const updatedWidget = { ...w, ...updates };
@@ -82,14 +92,14 @@ export const storeHelpers = {
       }
       return w;
     });
-    (store as any).set('widgets', updatedWidgets);
+    store.set('widgets', updatedWidgets);
   },
 
   updateSettings: (updates: Partial<AppSettings>): void => {
-    const settings = (store as any).get('settings') ?? defaultAppSettings;
+    const settings = store.get('settings', defaultAppSettings);
     const updatedSettings = { ...settings, ...updates };
     validateAppSettings(updatedSettings);
-    (store as any).set('settings', updatedSettings);
+    store.set('settings', updatedSettings);
 
     // Handle special settings
     if (updates.startAtLogin !== undefined) {
@@ -102,8 +112,8 @@ export const storeHelpers = {
   // Export configuration
   exportConfig: (): StoreSchema => {
     const data = {
-      widgets: (store as any).get('widgets') ?? [],
-      settings: (store as any).get('settings') ?? defaultAppSettings
+      widgets: store.get('widgets', []),
+      settings: store.get('settings', defaultAppSettings)
     };
     return validateStoreSchema(data);
   },
@@ -111,14 +121,14 @@ export const storeHelpers = {
   // Import configuration
   importConfig: (config: unknown): void => {
     const validConfig = validateStoreSchema(config);
-    (store as any).clear();
-    (store as any).set('widgets', validConfig.widgets);
-    (store as any).set('settings', validConfig.settings);
+    store.clear();
+    store.set('widgets', validConfig.widgets);
+    store.set('settings', validConfig.settings);
   },
 
   // Subscribe to changes
   onConfigChange: (callback: (newValue: StoreSchema) => void): (() => void) => {
-    return (store as any).onDidAnyChange((newValue: unknown) => {
+    return store.onDidAnyChange((newValue: unknown) => {
       try {
         const validConfig = validateStoreSchema(newValue);
         callback(validConfig);

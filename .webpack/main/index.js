@@ -18472,6 +18472,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const electron_1 = __webpack_require__(/*! electron */ "electron");
 const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
+const config_1 = __webpack_require__(/*! ../types/config */ "./src/types/config.ts");
 // Widget operations
 electron_1.ipcMain.handle('widget:add', (_, widget) => __awaiter(void 0, void 0, void 0, function* () {
     return store_1.storeHelpers.addWidget(widget);
@@ -18485,16 +18486,89 @@ electron_1.ipcMain.handle('widget:update', (_, { id, updates }) => __awaiter(voi
     return true;
 }));
 electron_1.ipcMain.handle('widget:list', () => __awaiter(void 0, void 0, void 0, function* () {
-    return store_1.store.get('widgets');
+    return store_1.store.get('widgets', []);
 }));
 // Settings operations
 electron_1.ipcMain.handle('settings:get', () => __awaiter(void 0, void 0, void 0, function* () {
-    return store_1.store.get('settings');
+    return store_1.store.get('settings', config_1.defaultAppSettings);
 }));
 electron_1.ipcMain.handle('settings:update', (_, updates) => __awaiter(void 0, void 0, void 0, function* () {
     store_1.storeHelpers.updateSettings(updates);
-    return store_1.store.get('settings');
+    return store_1.store.get('settings', config_1.defaultAppSettings);
 }));
+
+
+/***/ }),
+
+/***/ "./src/main/main.ts":
+/*!**************************!*\
+  !*** ./src/main/main.ts ***!
+  \**************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createWindow = void 0;
+const electron_1 = __webpack_require__(/*! electron */ "electron");
+const window_manager_1 = __webpack_require__(/*! ./window-manager */ "./src/main/window-manager.ts");
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electron-squirrel-startup/index.js")) {
+    electron_1.app.quit();
+}
+let windowManager = null;
+const createWindow = () => {
+    // Create the browser window.
+    const mainWindow = new electron_1.BrowserWindow({
+        height: 600,
+        width: 800,
+        frame: false,
+        transparent: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            webviewTag: false,
+            preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/main_window/preload.js', // Use webpack preload entry point
+        },
+        // Set minimum dimensions
+        minWidth: 400,
+        minHeight: 300,
+        // Enable window to be shown only when ready
+        show: false,
+    });
+    // Initialize window manager
+    windowManager = new window_manager_1.WindowManager(mainWindow);
+    // Handle window loading errors
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('Failed to load:', errorDescription);
+        // TODO: Show error UI to user
+    });
+    // Show window when ready to prevent flickering
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+    });
+    // Load the app's entry point
+    if (true) {
+        mainWindow.loadURL('http://localhost:3000/main_window').catch(err => {
+            console.error('Failed to load app:', err);
+            // TODO: Show error UI to user
+        });
+    }
+    // Disable DevTools in production
+    if (true) {
+        mainWindow.webContents.openDevTools();
+    }
+    // Clean up window manager when window is closed
+    mainWindow.on('closed', () => {
+        if (windowManager) {
+            windowManager.dispose();
+            windowManager = null;
+        }
+    });
+    return mainWindow;
+};
+exports.createWindow = createWindow;
 
 
 /***/ }),
@@ -18542,7 +18616,7 @@ const store = new electron_store_1.default({
         // Example migration for future schema changes
         '>=1.0.0': (migrateStore) => {
             try {
-                const data = migrateStore.get('.');
+                const data = migrateStore.store;
                 (0, config_1.validateStoreSchema)(data);
             }
             catch (error) {
@@ -18557,21 +18631,18 @@ exports.store = store;
 // Helper functions for store operations
 exports.storeHelpers = {
     addWidget: (widget) => {
-        var _a;
-        const widgets = (_a = store.get('widgets')) !== null && _a !== void 0 ? _a : [];
+        const widgets = store.get('widgets', []);
         const newWidget = Object.assign(Object.assign(Object.assign({}, config_1.defaultWidgetConfig), widget), { id: Date.now().toString() });
         (0, config_1.validateWidgetConfig)(newWidget);
         store.set('widgets', [...widgets, newWidget]);
         return newWidget;
     },
     removeWidget: (id) => {
-        var _a;
-        const widgets = (_a = store.get('widgets')) !== null && _a !== void 0 ? _a : [];
+        const widgets = store.get('widgets', []);
         store.set('widgets', widgets.filter((w) => w.id !== id));
     },
     updateWidget: (id, updates) => {
-        var _a;
-        const widgets = (_a = store.get('widgets')) !== null && _a !== void 0 ? _a : [];
+        const widgets = store.get('widgets', []);
         const updatedWidgets = widgets.map((w) => {
             if (w.id === id) {
                 const updatedWidget = Object.assign(Object.assign({}, w), updates);
@@ -18583,8 +18654,7 @@ exports.storeHelpers = {
         store.set('widgets', updatedWidgets);
     },
     updateSettings: (updates) => {
-        var _a;
-        const settings = (_a = store.get('settings')) !== null && _a !== void 0 ? _a : config_1.defaultAppSettings;
+        const settings = store.get('settings', config_1.defaultAppSettings);
         const updatedSettings = Object.assign(Object.assign({}, settings), updates);
         (0, config_1.validateAppSettings)(updatedSettings);
         store.set('settings', updatedSettings);
@@ -18597,10 +18667,9 @@ exports.storeHelpers = {
     },
     // Export configuration
     exportConfig: () => {
-        var _a, _b;
         const data = {
-            widgets: (_a = store.get('widgets')) !== null && _a !== void 0 ? _a : [],
-            settings: (_b = store.get('settings')) !== null && _b !== void 0 ? _b : config_1.defaultAppSettings
+            widgets: store.get('widgets', []),
+            settings: store.get('settings', config_1.defaultAppSettings)
         };
         return (0, config_1.validateStoreSchema)(data);
     },
@@ -18642,14 +18711,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.destroyTray = exports.createTray = void 0;
 const electron_1 = __webpack_require__(/*! electron */ "electron");
-const path_1 = __importDefault(__webpack_require__(/*! path */ "path"));
 const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
+const config_1 = __webpack_require__(/*! ../types/config */ "./src/types/config.ts");
+const path_1 = __importDefault(__webpack_require__(/*! path */ "path"));
 let tray = null;
 function createTray(mainWindow) {
+    if (tray !== null) {
+        return tray;
+    }
     // Create tray icon
-    const iconPath = path_1.default.join(__dirname, 'assets', 'tray-icon-template.png');
-    tray = new electron_1.Tray(iconPath);
-    tray.setToolTip('Widget Desktop');
+    const icon = electron_1.nativeImage.createFromPath(path_1.default.join(__dirname, 'assets', 'tray-icon.png'))
+        .resize({ width: 16, height: 16 }); // Resize for better appearance on macOS
+    if (icon.isEmpty()) {
+        console.error('Failed to load tray icon');
+    }
+    // Create tray with icon
+    tray = new electron_1.Tray(icon);
     const contextMenu = electron_1.Menu.buildFromTemplate([
         {
             label: 'Show/Hide Widgets',
@@ -18659,35 +18736,30 @@ function createTray(mainWindow) {
                 widgets.forEach((widget) => {
                     store_1.storeHelpers.updateWidget(widget.id, { isVisible: !allVisible });
                 });
-            },
-        },
-        {
-            label: 'Settings',
-            click: () => {
-                mainWindow.show();
-                mainWindow.focus();
-            },
+            }
         },
         { type: 'separator' },
         {
             label: 'Start at Login',
             type: 'checkbox',
-            checked: store_1.store.get('settings').startAtLogin,
+            checked: store_1.store.get('settings', config_1.defaultAppSettings).startAtLogin,
             click: (menuItem) => {
                 electron_1.app.setLoginItemSettings({
                     openAtLogin: menuItem.checked,
+                    path: electron_1.app.getPath('exe')
                 });
                 store_1.storeHelpers.updateSettings({ startAtLogin: menuItem.checked });
-            },
+            }
         },
         { type: 'separator' },
         {
             label: 'Quit',
             click: () => {
                 electron_1.app.quit();
-            },
-        },
+            }
+        }
     ]);
+    tray.setToolTip('Widget Desktop');
     tray.setContextMenu(contextMenu);
     // Double click shows/hides the main window
     tray.on('double-click', () => {
@@ -18699,6 +18771,7 @@ function createTray(mainWindow) {
             mainWindow.focus();
         }
     });
+    return tray;
 }
 exports.createTray = createTray;
 function destroyTray() {
@@ -18708,6 +18781,184 @@ function destroyTray() {
     }
 }
 exports.destroyTray = destroyTray;
+
+
+/***/ }),
+
+/***/ "./src/main/window-manager.ts":
+/*!************************************!*\
+  !*** ./src/main/window-manager.ts ***!
+  \************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WindowManager = void 0;
+const electron_1 = __webpack_require__(/*! electron */ "electron");
+class WindowManager {
+    constructor(window) {
+        this.isDragging = false;
+        this.isResizing = false;
+        this.dragOffset = { x: 0, y: 0 };
+        this.window = window;
+        this.setupEventHandlers();
+    }
+    setupEventHandlers() {
+        // Window control functions
+        electron_1.ipcMain.on('window:minimize', () => {
+            this.window.minimize();
+        });
+        electron_1.ipcMain.on('window:maximize', () => {
+            if (this.window.isMaximized()) {
+                this.window.unmaximize();
+            }
+            else {
+                this.window.maximize();
+            }
+        });
+        electron_1.ipcMain.on('window:close', () => {
+            this.window.close();
+        });
+        // Window position and size management
+        electron_1.ipcMain.handle('window:get-position', () => {
+            const [x, y] = this.window.getPosition();
+            return { x, y };
+        });
+        electron_1.ipcMain.on('window:set-position', (_, position) => {
+            this.window.setPosition(position.x, position.y);
+        });
+        electron_1.ipcMain.handle('window:get-size', () => {
+            const [width, height] = this.window.getSize();
+            return { width, height };
+        });
+        electron_1.ipcMain.on('window:set-size', (_, size) => {
+            this.window.setSize(size.width, size.height);
+        });
+        // Window dragging
+        electron_1.ipcMain.on('window:start-drag', () => __awaiter(this, void 0, void 0, function* () {
+            if (this.isResizing)
+                return;
+            this.isDragging = true;
+            try {
+                // Get current cursor position and window position
+                const cursorPosStr = yield this.window.webContents.executeJavaScript('JSON.stringify({ x: event.screenX, y: event.screenY })');
+                const cursorPos = JSON.parse(cursorPosStr);
+                const [winX, winY] = this.window.getPosition();
+                // Calculate offset
+                this.dragOffset = {
+                    x: cursorPos.x - winX,
+                    y: cursorPos.y - winY
+                };
+            }
+            catch (error) {
+                console.error('Failed to start window drag:', error);
+                this.isDragging = false;
+            }
+        }));
+        // Window resizing
+        electron_1.ipcMain.on('window:start-resize', (_, direction) => __awaiter(this, void 0, void 0, function* () {
+            if (this.isDragging)
+                return;
+            this.isResizing = true;
+            try {
+                // Store initial window size and cursor position
+                const [width, height] = this.window.getSize();
+                const cursorPosStr = yield this.window.webContents.executeJavaScript('JSON.stringify({ x: event.screenX, y: event.screenY })');
+                const cursorPos = JSON.parse(cursorPosStr);
+                // Handle mouse movement for resizing
+                this.mouseMoveHandler = (e, pos) => {
+                    if (!this.isResizing)
+                        return;
+                    const deltaX = pos.x - cursorPos.x;
+                    const deltaY = pos.y - cursorPos.y;
+                    let newWidth = width;
+                    let newHeight = height;
+                    switch (direction) {
+                        case 'right':
+                            newWidth = Math.max(400, width + deltaX);
+                            break;
+                        case 'bottom':
+                            newHeight = Math.max(300, height + deltaY);
+                            break;
+                        case 'bottomRight':
+                            newWidth = Math.max(400, width + deltaX);
+                            newHeight = Math.max(300, height + deltaY);
+                            break;
+                    }
+                    this.window.setSize(newWidth, newHeight);
+                };
+                // Handle mouse up to stop resizing
+                this.mouseUpHandler = () => {
+                    this.isResizing = false;
+                    if (this.mouseMoveHandler) {
+                        electron_1.ipcMain.removeListener('window:mouse-move', this.mouseMoveHandler);
+                    }
+                    if (this.mouseUpHandler) {
+                        electron_1.ipcMain.removeListener('window:mouse-up', this.mouseUpHandler);
+                    }
+                    this.mouseMoveHandler = undefined;
+                    this.mouseUpHandler = undefined;
+                };
+                electron_1.ipcMain.on('window:mouse-move', this.mouseMoveHandler);
+                electron_1.ipcMain.on('window:mouse-up', this.mouseUpHandler);
+            }
+            catch (error) {
+                console.error('Failed to start window resize:', error);
+                this.isResizing = false;
+            }
+        }));
+        // Mouse move and up events for dragging
+        electron_1.ipcMain.on('window:mouse-move', (_, pos) => {
+            if (!this.isDragging)
+                return;
+            this.window.setPosition(pos.x - this.dragOffset.x, pos.y - this.dragOffset.y);
+        });
+        electron_1.ipcMain.on('window:mouse-up', () => {
+            this.isDragging = false;
+        });
+    }
+    // Clean up event listeners
+    dispose() {
+        try {
+            // Remove all handlers
+            electron_1.ipcMain.removeHandler('window:get-position');
+            electron_1.ipcMain.removeHandler('window:get-size');
+            // Remove all listeners
+            electron_1.ipcMain.removeAllListeners('window:minimize');
+            electron_1.ipcMain.removeAllListeners('window:maximize');
+            electron_1.ipcMain.removeAllListeners('window:close');
+            electron_1.ipcMain.removeAllListeners('window:set-position');
+            electron_1.ipcMain.removeAllListeners('window:set-size');
+            electron_1.ipcMain.removeAllListeners('window:start-drag');
+            electron_1.ipcMain.removeAllListeners('window:start-resize');
+            electron_1.ipcMain.removeAllListeners('window:mouse-move');
+            electron_1.ipcMain.removeAllListeners('window:mouse-up');
+            // Clean up any active handlers
+            if (this.mouseMoveHandler) {
+                electron_1.ipcMain.removeListener('window:mouse-move', this.mouseMoveHandler);
+            }
+            if (this.mouseUpHandler) {
+                electron_1.ipcMain.removeListener('window:mouse-up', this.mouseUpHandler);
+            }
+            this.mouseMoveHandler = undefined;
+            this.mouseUpHandler = undefined;
+        }
+        catch (error) {
+            console.error('Error disposing WindowManager:', error);
+        }
+    }
+}
+exports.WindowManager = WindowManager;
 
 
 /***/ }),
@@ -19021,6 +19272,7 @@ var exports = __webpack_exports__;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const electron_1 = __webpack_require__(/*! electron */ "electron");
+const main_1 = __webpack_require__(/*! ./main */ "./src/main/main.ts");
 const tray_1 = __webpack_require__(/*! ./tray */ "./src/main/tray.ts");
 __webpack_require__(/*! ./ipc */ "./src/main/ipc.ts"); // Initialize IPC handlers
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -19028,33 +19280,13 @@ if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electro
     electron_1.app.quit();
 }
 let mainWindow = null;
-const createWindow = () => {
-    // Create the browser window.
-    mainWindow = new electron_1.BrowserWindow({
-        height: 600,
-        width: 800,
-        webPreferences: {
-            preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/main_window/preload.js',
-            nodeIntegration: false,
-            contextIsolation: true,
-        },
-    });
-    // and load the index.html of the app.
-    if (true) {
-        mainWindow.loadURL('http://localhost:3000/main_window');
-    }
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools();
-    // Initialize system tray
-    (0, tray_1.createTray)(mainWindow);
-    mainWindow.on('closed', () => {
-        mainWindow = null;
-    });
-};
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-electron_1.app.on('ready', createWindow);
+electron_1.app.on('ready', () => {
+    mainWindow = (0, main_1.createWindow)();
+    (0, tray_1.createTray)(mainWindow);
+});
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
@@ -19067,7 +19299,7 @@ electron_1.app.on('activate', () => {
     // On OS X it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (electron_1.BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
+        mainWindow = (0, main_1.createWindow)();
     }
 });
 electron_1.app.on('before-quit', () => {
