@@ -1,7 +1,8 @@
 import type { Configuration } from 'webpack';
-
+import path from 'path';
 import { rules } from './webpack.rules';
 import { plugins } from './webpack.plugins';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 
 export const mainConfig: Configuration = {
   /**
@@ -11,11 +12,30 @@ export const mainConfig: Configuration = {
   entry: './src/main/index.ts',
   // Put your normal webpack config below here
   module: {
-    rules,
+    rules: [
+      ...rules,
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'assets/[name][ext]'
+        }
+      }
+    ],
   },
-  plugins,
+  plugins: [
+    ...plugins,
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, 'src/assets'),
+          to: path.resolve(__dirname, '.webpack/main/assets')
+        }
+      ]
+    })
+  ],
   resolve: {
-    extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json', '.png'],
   },
 };
 

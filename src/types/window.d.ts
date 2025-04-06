@@ -1,8 +1,15 @@
+import type { WidgetConfig, StoreSchema } from '../main/store';
+
 export interface IElectronAPI {
-  // Add method signatures here as we implement them
-  // Example:
-  // send: (channel: string, data: any) => void;
-  // receive: (channel: string, func: Function) => void;
+  // Widget operations
+  addWidget: (widget: Omit<WidgetConfig, 'id'>) => Promise<WidgetConfig>;
+  removeWidget: (id: string) => Promise<boolean>;
+  updateWidget: (id: string, updates: Partial<WidgetConfig>) => Promise<boolean>;
+  listWidgets: () => Promise<WidgetConfig[]>;
+
+  // Settings operations
+  getSettings: () => Promise<StoreSchema['settings']>;
+  updateSettings: (updates: Partial<StoreSchema['settings']>) => Promise<StoreSchema['settings']>;
 }
 
 declare global {
