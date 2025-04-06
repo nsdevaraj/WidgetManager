@@ -59,7 +59,23 @@ export const appSettingsSchema = z.object({
     isVisible: z.boolean(),
     createdAt: z.number(),
     updatedAt: z.number()
-  })).optional()
+  })).optional(),
+  resourceManagement: z.object({
+    backgroundCpuLimit: z.number().min(1).max(100).default(10),
+    backgroundMemoryLimit: z.number().min(50).max(1000).default(100),
+    resourceCheckInterval: z.number().min(1000).max(60000).default(5000),
+    autoThrottleBackground: z.boolean().default(true),
+    enableMetricsLogging: z.boolean().default(true),
+    throttleThresholds: z.object({
+      cpu: z.number().min(1).max(100).default(80),
+      memory: z.number().min(50).max(1000).default(100),
+      networkRequests: z.number().min(1).max(1000).default(50)
+    }).strict(),
+    throttleSettings: z.object({
+      frameRate: z.number().min(1).max(60).default(10),
+      clearCacheInterval: z.number().min(1000).max(3600000).default(300000)
+    }).strict()
+  }).strict()
 }).strict();
 
 // Store schema combining both widgets and settings
@@ -95,7 +111,23 @@ export const defaultAppSettings: AppSettings = {
   theme: 'system',
   startupBehavior: 'restore',
   startAtLogin: true,
-  widgetGroups: []
+  widgetGroups: [],
+  resourceManagement: {
+    backgroundCpuLimit: 10,
+    backgroundMemoryLimit: 100,
+    resourceCheckInterval: 5000,
+    autoThrottleBackground: true,
+    enableMetricsLogging: true,
+    throttleThresholds: {
+      cpu: 80,
+      memory: 100,
+      networkRequests: 50
+    },
+    throttleSettings: {
+      frameRate: 10,
+      clearCacheInterval: 300000
+    }
+  }
 };
 
 // Helper functions for validation

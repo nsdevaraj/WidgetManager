@@ -3,10 +3,11 @@ import './Settings.css';
 import { WindowChrome } from './WindowChrome';
 import { WidgetManager } from './WidgetManager';
 import { PreferencesForm } from './PreferencesForm';
+import { ResourceManagementForm } from './ResourceManagementForm';
 import { AppSettings, defaultAppSettings } from '../../types/config';
 import { IElectronAPI } from '../../types/electron';
 
-type SettingsTab = 'widgets' | 'preferences';
+type SettingsTab = 'widgets' | 'preferences' | 'resources';
 
 interface ErrorNotificationProps {
   message: string;
@@ -68,7 +69,7 @@ export const Settings: React.FC = () => {
     };
   }, []);
 
-  const handleSettingsChange = async (newSettings: AppSettings) => {
+  const handleSettingsChange = async (newSettings: Partial<AppSettings>) => {
     const api = window.api;
     if (!isElectronAPI(api)) {
       setError('Electron API not available');
@@ -112,6 +113,12 @@ export const Settings: React.FC = () => {
           >
             Preferences
           </button>
+          <button
+            className={`tab-button ${activeTab === 'resources' ? 'active' : ''}`}
+            onClick={() => setActiveTab('resources')}
+          >
+            Resource Management
+          </button>
         </div>
       </div>
 
@@ -134,6 +141,15 @@ export const Settings: React.FC = () => {
               <div className="widgets-section">
                 <h2>Widget Management</h2>
                 <WidgetManager />
+              </div>
+            )}
+            {activeTab === 'resources' && (
+              <div className="resources-section">
+                <h2>Resource Management</h2>
+                <ResourceManagementForm
+                  settings={settings}
+                  onSettingsChange={handleSettingsChange}
+                />
               </div>
             )}
           </>

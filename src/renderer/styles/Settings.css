@@ -1,0 +1,97 @@
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.settings-header {
+  padding: 16px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  background-color: var(--background-hover);
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  background-color: var(--accent-color);
+  color: var(--text-on-accent);
+}
+
+.settings-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.settings-content h2 {
+  margin: 0 0 24px 0;
+  color: var(--text-primary);
+  font-size: 1.5em;
+}
+
+.error-message {
+  padding: 12px;
+  margin-bottom: 16px;
+  background-color: var(--error-background);
+  color: var(--error-text);
+  border-radius: 4px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary);
+}
+
+.preferences-section,
+.widgets-section,
+.resources-section {
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .settings-content {
+    padding: 16px;
+  }
+
+  .preferences-section,
+  .widgets-section,
+  .resources-section {
+    padding: 16px;
+  }
+
+  .settings-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    flex: 1;
+    text-align: center;
+    min-width: 120px;
+  }
+} 

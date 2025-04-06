@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, BrowserView, app, ProcessMemoryInfo } from 'electron';
 import { WidgetConfig, WidgetResourceMetrics } from '../types/config';
+import { SettingsManager } from './settings-manager';
 
 declare const WIDGET_WINDOW_WEBPACK_ENTRY: string;
 declare const WIDGET_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -19,9 +20,12 @@ export class WidgetWindow {
   private isVisible: boolean = true;
   private isThrottled: boolean = false;
   private resourceCheckInterval: NodeJS.Timeout | null = null;
+  private cacheCleanupInterval: NodeJS.Timeout | null = null;
+  private settingsManager: SettingsManager;
 
   constructor(config: WidgetConfig) {
     this.config = config;
+    this.settingsManager = SettingsManager.getInstance();
     this.window = this.createWindow();
     this.setupWindow();
     this.setupIPC();
@@ -374,8 +378,13 @@ export class WidgetWindow {
     }
   }
 
-  private startResourceMonitoring() {
-    // Collect metrics every 5 seconds
+  private async startResourceMonitoring() {
+    const settings = await this.settingsManager.getSettings();
+    const { resourceManagement } = settings;
+
+    if (!resourceManagement.enableMetricsLogging) return;
+
+    // Collect metrics at the configured interval
     this.metricsInterval = setInterval(async () => {
       try {
         if (!this.window.isDestroyed()) {
@@ -387,18 +396,21 @@ export class WidgetWindow {
           // Emit metrics update event
           this.window.webContents.send('widget:metrics-update', metrics);
 
-          // Log warning if resource usage is high
-          if (metrics.cpuUsage > 80) {
+          // Log warning if resource usage exceeds thresholds
+          if (metrics.cpuUsage > resourceManagement.throttleThresholds.cpu) {
             console.warn(`High CPU usage detected for widget ${this.config.id}: ${metrics.cpuUsage}%`);
           }
-          if (metrics.memoryUsage > 100 * 1024 * 1024) { // 100MB
+          if (metrics.memoryUsage > resourceManagement.throttleThresholds.memory * 1024 * 1024) {
             console.warn(`High memory usage detected for widget ${this.config.id}: ${Math.round(metrics.memoryUsage / 1024 / 1024)}MB`);
+          }
+          if (metrics.networkRequests > resourceManagement.throttleThresholds.networkRequests) {
+            console.warn(`High network activity detected for widget ${this.config.id}: ${metrics.networkRequests} requests`);
           }
         }
       } catch (error) {
         console.error('Error collecting resource metrics:', error);
       }
-    }, 5000);
+    }, resourceManagement.resourceCheckInterval);
 
     // Start monitoring when window is ready
     this.window.once('ready-to-show', () => {
@@ -406,58 +418,99 @@ export class WidgetWindow {
     });
   }
 
-  private startResourceThrottling() {
+  private async startResourceThrottling() {
+    const settings = await this.settingsManager.getSettings();
+    const { resourceManagement } = settings;
+
+    if (!resourceManagement.autoThrottleBackground) return;
+
     this.resourceCheckInterval = setInterval(async () => {
       if (!this.isVisible || this.isThrottled) {
         const metrics = await this.collectResourceMetrics();
         if (!metrics) return;
 
-        // Check CPU usage
-        if (metrics.cpuUsage > BACKGROUND_CPU_LIMIT) {
+        // Check resource usage against configured limits
+        if (metrics.cpuUsage > resourceManagement.backgroundCpuLimit) {
           this.throttleCPU();
         }
-
-        // Check memory usage
-        if (metrics.memoryUsage > BACKGROUND_MEMORY_LIMIT) {
+        if (metrics.memoryUsage > resourceManagement.backgroundMemoryLimit * 1024 * 1024) {
           this.throttleMemory();
         }
+        if (metrics.networkRequests > resourceManagement.throttleThresholds.networkRequests) {
+          this.throttleNetwork();
+        }
       }
-    }, RESOURCE_CHECK_INTERVAL);
+    }, resourceManagement.resourceCheckInterval);
+
+    // Set up cache cleanup interval
+    this.cacheCleanupInterval = setInterval(() => {
+      if (this.isThrottled) {
+        this.clearCache();
+      }
+    }, resourceManagement.throttleSettings.clearCacheInterval);
   }
 
-  private throttleCPU() {
+  private async throttleCPU() {
+    const settings = await this.settingsManager.getSettings();
     if (this.browserView && this.browserView.webContents) {
-      // Reduce frame rate and throttle background processes
-      this.browserView.webContents.setFrameRate(5);
+      // Apply configured frame rate limit
+      this.browserView.webContents.setFrameRate(settings.resourceManagement.throttleSettings.frameRate);
       this.browserView.webContents.setBackgroundThrottling(true);
     }
   }
 
-  private throttleMemory() {
+  private async throttleMemory() {
     if (this.browserView && this.browserView.webContents) {
       // Force garbage collection
       if (global.gc) {
         global.gc();
       }
       
-      // Clear cache and unused memory
-      this.browserView.webContents.session.clearCache();
-      this.browserView.webContents.session.clearStorageData({
-        storages: ['cachestorage', 'shadercache', 'serviceworkers']
+      await this.clearCache();
+    }
+  }
+
+  private async throttleNetwork() {
+    if (this.browserView && this.browserView.webContents) {
+      // Implement network throttling
+      await this.browserView.webContents.session.enableNetworkEmulation({
+        offline: false,
+        latency: 100,
+        downloadThroughput: 100 * 1024, // 100 KB/s
+        uploadThroughput: 100 * 1024 // 100 KB/s
       });
     }
   }
 
-  private handleVisibilityChange() {
+  private async clearCache() {
     if (this.browserView && this.browserView.webContents) {
-      if (!this.isVisible) {
-        // Throttle background processes
+      try {
+        // Clear various types of cached data
+        await this.browserView.webContents.session.clearCache();
+        await this.browserView.webContents.session.clearStorageData({
+          storages: ['cachestorage', 'shadercache', 'serviceworkers']
+        });
+      } catch (error) {
+        console.error('Error clearing cache:', error);
+      }
+    }
+  }
+
+  private async handleVisibilityChange() {
+    const settings = await this.settingsManager.getSettings();
+    if (this.browserView && this.browserView.webContents) {
+      if (!this.isVisible && settings.resourceManagement.autoThrottleBackground) {
+        // Apply throttling based on settings
         this.browserView.webContents.setBackgroundThrottling(true);
+        this.browserView.webContents.setFrameRate(settings.resourceManagement.throttleSettings.frameRate);
         this.browserView.webContents.audioMuted = true;
       } else {
         // Restore normal operation
         this.browserView.webContents.setBackgroundThrottling(false);
+        this.browserView.webContents.setFrameRate(60);
         this.browserView.webContents.audioMuted = false;
+        // Disable network throttling
+        await this.browserView.webContents.session.disableNetworkEmulation();
       }
     }
   }
@@ -482,6 +535,9 @@ export class WidgetWindow {
     }
     if (this.resourceCheckInterval) {
       clearInterval(this.resourceCheckInterval);
+    }
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
     }
     this.destroyBrowserView();
     try {

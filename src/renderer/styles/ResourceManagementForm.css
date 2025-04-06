@@ -1,0 +1,75 @@
+.resource-management-form {
+  padding: 20px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+}
+
+.resource-management-form h3 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+  font-size: 1.2em;
+}
+
+.resource-management-form .settings-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: var(--background-tertiary);
+  border-radius: 6px;
+}
+
+.resource-management-form h4 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  font-size: 1.1em;
+}
+
+.resource-management-form .form-group {
+  margin-bottom: 16px;
+}
+
+.resource-management-form .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.resource-management-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.resource-management-form input[type="number"] {
+  width: 120px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.resource-management-form input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.resource-management-form .help-text {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .resource-management-form {
+    padding: 16px;
+  }
+
+  .resource-management-form .settings-section {
+    padding: 12px;
+  }
+
+  .resource-management-form input[type="number"] {
+    width: 100%;
+    max-width: 200px;
+  }
+} 

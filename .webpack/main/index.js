@@ -19406,16 +19406,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WidgetWindow = void 0;
 const electron_1 = __webpack_require__(/*! electron */ "electron");
+// Constants for resource management
+const BACKGROUND_THROTTLE_INTERVAL = 1000; // 1 second
+const BACKGROUND_CPU_LIMIT = 10; // 10% CPU usage limit for background widgets
+const BACKGROUND_MEMORY_LIMIT = 100 * 1024 * 1024; // 100MB memory limit for background widgets
+const RESOURCE_CHECK_INTERVAL = 5000; // Check resources every 5 seconds
 class WidgetWindow {
     constructor(config) {
         this.browserView = null;
         this.metricsInterval = null;
         this.startTime = Date.now();
+        this.isVisible = true;
+        this.isThrottled = false;
+        this.resourceCheckInterval = null;
         this.config = config;
         this.window = this.createWindow();
         this.setupWindow();
         this.setupIPC();
         this.startResourceMonitoring();
+        this.startResourceThrottling();
     }
     createWindow() {
         var _a, _b;
@@ -19488,6 +19497,24 @@ class WidgetWindow {
                     height: bounds.height - 36
                 });
             }
+        });
+        // Add visibility change handler
+        this.window.on('hide', () => {
+            this.isVisible = false;
+            this.handleVisibilityChange();
+        });
+        this.window.on('show', () => {
+            this.isVisible = true;
+            this.handleVisibilityChange();
+        });
+        // Add focus/blur handlers for throttling
+        this.window.on('focus', () => {
+            this.isThrottled = false;
+            this.handleThrottlingChange();
+        });
+        this.window.on('blur', () => {
+            this.isThrottled = true;
+            this.handleThrottlingChange();
         });
     }
     setupIPC() {
@@ -19727,9 +19754,77 @@ class WidgetWindow {
             this.startTime = Date.now();
         });
     }
+    startResourceThrottling() {
+        this.resourceCheckInterval = setInterval(() => __awaiter(this, void 0, void 0, function* () {
+            if (!this.isVisible || this.isThrottled) {
+                const metrics = yield this.collectResourceMetrics();
+                if (!metrics)
+                    return;
+                // Check CPU usage
+                if (metrics.cpuUsage > BACKGROUND_CPU_LIMIT) {
+                    this.throttleCPU();
+                }
+                // Check memory usage
+                if (metrics.memoryUsage > BACKGROUND_MEMORY_LIMIT) {
+                    this.throttleMemory();
+                }
+            }
+        }), RESOURCE_CHECK_INTERVAL);
+    }
+    throttleCPU() {
+        if (this.browserView && this.browserView.webContents) {
+            // Reduce frame rate and throttle background processes
+            this.browserView.webContents.setFrameRate(5);
+            this.browserView.webContents.setBackgroundThrottling(true);
+        }
+    }
+    throttleMemory() {
+        if (this.browserView && this.browserView.webContents) {
+            // Force garbage collection
+            if (global.gc) {
+                global.gc();
+            }
+            // Clear cache and unused memory
+            this.browserView.webContents.session.clearCache();
+            this.browserView.webContents.session.clearStorageData({
+                storages: ['cachestorage', 'shadercache', 'serviceworkers']
+            });
+        }
+    }
+    handleVisibilityChange() {
+        if (this.browserView && this.browserView.webContents) {
+            if (!this.isVisible) {
+                // Throttle background processes
+                this.browserView.webContents.setBackgroundThrottling(true);
+                this.browserView.webContents.audioMuted = true;
+            }
+            else {
+                // Restore normal operation
+                this.browserView.webContents.setBackgroundThrottling(false);
+                this.browserView.webContents.audioMuted = false;
+            }
+        }
+    }
+    handleThrottlingChange() {
+        if (this.browserView && this.browserView.webContents) {
+            if (this.isThrottled) {
+                // Apply throttling for unfocused widgets
+                this.browserView.webContents.setBackgroundThrottling(true);
+                this.browserView.webContents.setFrameRate(10); // Reduce frame rate
+            }
+            else {
+                // Restore normal operation
+                this.browserView.webContents.setBackgroundThrottling(false);
+                this.browserView.webContents.setFrameRate(60); // Restore frame rate
+            }
+        }
+    }
     dispose() {
         if (this.metricsInterval) {
             clearInterval(this.metricsInterval);
+        }
+        if (this.resourceCheckInterval) {
+            clearInterval(this.resourceCheckInterval);
         }
         this.destroyBrowserView();
         try {
