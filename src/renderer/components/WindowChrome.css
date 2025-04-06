@@ -5,11 +5,19 @@
   right: 0;
   height: 32px;
   -webkit-app-region: drag;
-  background-color: transparent;
+  background-color: var(--chrome-bg-color);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   z-index: 9999;
+  user-select: none;
+}
+
+.window-title {
+  padding: 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
 }
 
 .window-controls {

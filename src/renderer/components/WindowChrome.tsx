@@ -2,9 +2,14 @@ import React from 'react';
 import { MinimizeIcon, MaximizeIcon, CloseIcon } from './icons';
 import './WindowChrome.css';
 
-export const WindowChrome: React.FC = () => {
+interface WindowChromeProps {
+  title?: string;
+}
+
+export const WindowChrome: React.FC<WindowChromeProps> = ({ title }) => {
   return (
     <div className="window-chrome">
+      {title && <div className="window-title">{title}</div>}
       <div className="window-controls">
         <button
           className="window-control minimize"
