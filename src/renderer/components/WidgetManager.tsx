@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { WidgetConfig, WidgetType, defaultWidgetConfig } from '../../types/config';
 import { WidgetPreview } from './WidgetPreview';
+import { NotificationManager, setNotificationManager, showNotification } from './NotificationManager';
 import './WidgetManager.css';
 
 interface WidgetFormData {
@@ -90,6 +91,14 @@ export const WidgetManager: React.FC = () => {
     loadWidgets();
   }, []);
 
+  useEffect(() => {
+    setNotificationManager({
+      addNotification: (notification) => {
+        // Implementation will be handled by NotificationManager component
+      }
+    });
+  }, []);
+
   const loadWidgets = async () => {
     setIsLoading(true);
     setError(null);
@@ -159,7 +168,7 @@ export const WidgetManager: React.FC = () => {
   const handleAddWidget = async () => {
     const validationError = validateForm();
     if (validationError) {
-      setError(validationError);
+      showNotification('error', validationError);
       return;
     }
 
@@ -169,6 +178,10 @@ export const WidgetManager: React.FC = () => {
       if (!window.api) {
         throw new Error('Electron API not available');
       }
+
+      // Show creating notification
+      showNotification('info', 'Creating widget...', 2000);
+
       const newWidget = await window.api.addWidget({
         type: formData.type,
         position: { x: 0, y: 0 }, // Default position
@@ -180,12 +193,28 @@ export const WidgetManager: React.FC = () => {
           ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
         }
       });
+
       setWidgets([...widgets, newWidget]);
       setIsEditing(false);
       setError(null);
+
+      // Show success notification
+      showNotification('success', 'Widget created successfully!');
+
+      // Reset form
+      setFormData({
+        type: 'clock',
+        size: WIDGET_TYPES[0].defaultSize,
+        settings: {
+          isAlwaysOnTop: false,
+          opacity: 1,
+          customCSS: '',
+          initialUrl: ''
+        }
+      });
     } catch (error) {
       console.error('Error adding widget:', error);
-      setError('Failed to add widget. Please try again.');
+      showNotification('error', 'Failed to create widget. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -194,7 +223,7 @@ export const WidgetManager: React.FC = () => {
   const handleUpdateWidget = async (id: string) => {
     const validationError = validateForm();
     if (validationError) {
-      setError(validationError);
+      showNotification('error', validationError);
       return;
     }
 
@@ -204,6 +233,10 @@ export const WidgetManager: React.FC = () => {
       if (!window.api) {
         throw new Error('Electron API not available');
       }
+
+      // Show updating notification
+      showNotification('info', 'Updating widget...', 2000);
+
       const updatedWidget = await window.api.updateWidget(id, {
         size: formData.size,
         settings: {
@@ -213,40 +246,44 @@ export const WidgetManager: React.FC = () => {
           ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
         }
       });
-      const updatedWidgets = widgets.map(w => 
-        w.id === id ? updatedWidget : w
-      );
-      setWidgets(updatedWidgets);
+
+      setWidgets(widgets.map(w => w.id === id ? updatedWidget : w));
       setIsEditing(false);
       setSelectedWidget(null);
       setError(null);
+
+      // Show success notification
+      showNotification('success', 'Widget updated successfully!');
     } catch (error) {
-      console.error('Error updating widget:', error);
-      setError('Failed to update widget. Please try again.');
+      console.error('Failed to update widget:', error);
+      showNotification('error', 'Failed to update widget. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRemoveWidget = async (id: string) => {
-    setIsLoading(true);
-    setError(null);
     try {
       if (!window.api) {
         throw new Error('Electron API not available');
       }
+
+      // Show removing notification
+      showNotification('info', 'Removing widget...', 2000);
+
       await window.api.deleteWidget(id);
       setWidgets(widgets.filter(w => w.id !== id));
+      
       if (selectedWidget === id) {
         setSelectedWidget(null);
         setIsEditing(false);
       }
-      setError(null);
+
+      // Show success notification
+      showNotification('success', 'Widget removed successfully!');
     } catch (error) {
-      console.error('Error removing widget:', error);
-      setError('Failed to remove widget. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to remove widget:', error);
+      showNotification('error', 'Failed to remove widget. Please try again.');
     }
   };
 
@@ -280,6 +317,7 @@ export const WidgetManager: React.FC = () => {
 
   return (
     <div className="widget-manager">
+      <NotificationManager maxNotifications={3} />
       {error && (
         <div className="error-message">
           <p>{error}</p>
