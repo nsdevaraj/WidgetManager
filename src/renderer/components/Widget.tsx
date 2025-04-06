@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
 import './Widget.css';
 
@@ -16,67 +16,55 @@ export const Widget: React.FC<WidgetProps> = ({
   standalone = false 
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<Position | null>(null);
+  const dragState = useRef({ startX: 0, startY: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (standalone) {
+      window.api.onStartDrag();
+      return;
+    }
+    
+    e.preventDefault();
+    dragState.current = {
+      startX: e.clientX - config.position.x,
+      startY: e.clientY - config.position.y
+    };
+    setIsDragging(true);
+  };
 
   useEffect(() => {
-    if (standalone) {
-      // In standalone mode, use window.api for drag operations
-      const handleMouseDown = () => {
-        window.api.onStartDrag();
-      };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        window.api.onMouseMove(e.screenX, e.screenY);
-      };
-
-      const handleMouseUp = () => {
-        window.api.onMouseUp();
-      };
-
-      window.addEventListener('mousedown', handleMouseDown);
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-
-      return () => {
-        window.removeEventListener('mousedown', handleMouseDown);
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [standalone]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (standalone) return; // Skip in standalone mode
-
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - config.position.x,
-      y: e.clientY - config.position.y
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || standalone) return;
 
-    const newPosition = {
-      x: e.clientX - dragStart!.x,
-      y: e.clientY - dragStart!.y
+    const handleMouseMove = (e: MouseEvent) => {
+      const position: Position = {
+        x: e.clientX - dragState.current.startX,
+        y: e.clientY - dragState.current.startY
+      };
+      onPositionChange?.(position);
     };
 
-    onPositionChange?.(newPosition);
-  };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      onDragEnd?.({ x: config.position.x, y: config.position.y });
+    };
 
-  const handleMouseUp = () => {
-    if (!isDragging || standalone) return;
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
-    setIsDragging(false);
-    onDragEnd?.({
-      x: config.position.x,
-      y: config.position.y
-    });
-  };
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, standalone, config.position, onPositionChange, onDragEnd]);
 
-  const style: React.CSSProperties = standalone ? {} : {
+  const style: React.CSSProperties = standalone ? {
+    width: '100%',
+    height: '100%',
+    background: 'white',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    position: 'relative'
+  } : {
     position: 'absolute',
     left: config.position.x,
     top: config.position.y,
@@ -97,18 +85,33 @@ export const Widget: React.FC<WidgetProps> = ({
 
   return (
     <div
-      className={`widget ${config.type} ${isDragging ? 'dragging' : ''}`}
+      className={`widget ${config.type} ${isDragging ? 'dragging' : ''} ${standalone ? 'standalone' : ''}`}
       style={style}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
     >
-      {/* Widget content based on type */}
-      {config.type === 'clock' && <div>Clock Widget</div>}
-      {config.type === 'weather' && <div>Weather Widget</div>}
-      {config.type === 'notes' && <div>Notes Widget</div>}
-      {config.type === 'calendar' && <div>Calendar Widget</div>}
+      <div 
+        className="widget-header" 
+        onMouseDown={handleMouseDown}
+      >
+        <span className="widget-title">{config.type}</span>
+      </div>
+      <div className="widget-content">
+        {config.type === 'clock' && <div>Clock Widget</div>}
+        {config.type === 'weather' && <div>Weather Widget</div>}
+        {config.type === 'notes' && <div>Notes Widget</div>}
+        {config.type === 'calendar' && <div>Calendar Widget</div>}
+      </div>
+      {!standalone && (
+        <div 
+          className="widget-drag-handle" 
+          onMouseDown={handleMouseDown}
+          title="Drag to move"
+        >
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 18h8v-2H8v2zm0-4h8v-2H8v2zm0-4h8V8H8v2zm0-4h8V4H8v2z"/>
+          </svg>
+        </div>
+      )}
     </div>
   );
 }; 

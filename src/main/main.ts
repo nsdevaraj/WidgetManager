@@ -51,12 +51,6 @@ export const createWindow = (): BrowserWindow => {
   initializeWindowManagement(mainWindow);
   initializeScreenManagement(mainWindow);
 
-  // Initialize IPC handlers only once
-  if (!ipcHandlersInitialized) {
-    initializeIpcHandlers();
-    ipcHandlersInitialized = true;
-  }
-
   // Handle window loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Failed to load:', errorDescription);
@@ -91,6 +85,12 @@ app.whenReady().then(() => {
   // Initialize managers
   widgetManager = initializeWidgetManagement();
   settingsManager = initializeSettingsManagement();
+
+  // Initialize IPC handlers after managers are ready
+  if (!ipcHandlersInitialized) {
+    initializeIpcHandlers();
+    ipcHandlersInitialized = true;
+  }
 
   createWindow();
 

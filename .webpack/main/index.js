@@ -18647,11 +18647,6 @@ const createWindow = () => {
     // Initialize window-specific managers
     (0, window_manager_1.initializeWindowManagement)(mainWindow);
     (0, screen_manager_1.initializeScreenManagement)(mainWindow);
-    // Initialize IPC handlers only once
-    if (!ipcHandlersInitialized) {
-        (0, ipc_1.initializeIpcHandlers)();
-        ipcHandlersInitialized = true;
-    }
     // Handle window loading errors
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Failed to load:', errorDescription);
@@ -18682,6 +18677,11 @@ electron_1.app.whenReady().then(() => {
     // Initialize managers
     widgetManager = (0, widget_manager_1.initializeWidgetManagement)();
     settingsManager = (0, settings_manager_1.initializeSettingsManagement)();
+    // Initialize IPC handlers after managers are ready
+    if (!ipcHandlersInitialized) {
+        (0, ipc_1.initializeIpcHandlers)();
+        ipcHandlersInitialized = true;
+    }
     (0, exports.createWindow)();
     electron_1.app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
@@ -19218,6 +19218,8 @@ class WidgetWindow {
             transparent: true,
             alwaysOnTop: (_b = (_a = this.config.settings) === null || _a === void 0 ? void 0 : _a.isAlwaysOnTop) !== null && _b !== void 0 ? _b : false,
             skipTaskbar: true,
+            movable: true,
+            hasShadow: true,
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
@@ -19244,6 +19246,20 @@ class WidgetWindow {
         // Handle window close
         this.window.on('closed', () => {
             this.dispose();
+        });
+        // Handle window move events
+        let moveTimeout = null;
+        this.window.on('move', () => {
+            // Debounce the position update to avoid excessive updates
+            if (moveTimeout) {
+                clearTimeout(moveTimeout);
+            }
+            moveTimeout = setTimeout(() => {
+                const [x, y] = this.window.getPosition();
+                this.updateConfig({
+                    position: { x, y }
+                });
+            }, 100);
         });
     }
     updateConfig(updates) {

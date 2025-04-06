@@ -24,6 +24,8 @@ export class WidgetWindow {
       transparent: true,
       alwaysOnTop: this.config.settings?.isAlwaysOnTop ?? false,
       skipTaskbar: true,
+      movable: true,
+      hasShadow: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -53,6 +55,21 @@ export class WidgetWindow {
     // Handle window close
     this.window.on('closed', () => {
       this.dispose();
+    });
+
+    // Handle window move events
+    let moveTimeout: NodeJS.Timeout | null = null;
+    this.window.on('move', () => {
+      // Debounce the position update to avoid excessive updates
+      if (moveTimeout) {
+        clearTimeout(moveTimeout);
+      }
+      moveTimeout = setTimeout(() => {
+        const [x, y] = this.window.getPosition();
+        this.updateConfig({
+          position: { x, y }
+        });
+      }, 100);
     });
   }
 
