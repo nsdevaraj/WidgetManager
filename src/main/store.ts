@@ -1,68 +1,132 @@
 import Store from 'electron-store';
+import { app } from 'electron';
+import {
+  StoreSchema,
+  WidgetConfig,
+  AppSettings,
+  defaultAppSettings,
+  defaultWidgetConfig,
+  validateWidgetConfig,
+  validateAppSettings,
+  validateStoreSchema
+} from '../types/config';
 
-export interface WidgetConfig {
-  id: string;
-  isVisible: boolean;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  type: string;
-  settings: Record<string, unknown>;
-}
-
-interface StoreSchema {
-  widgets: WidgetConfig[];
-  settings: {
-    startAtLogin: boolean;
-    theme: 'light' | 'dark' | 'system';
-  };
+interface StoreOptions {
+  type: 'set' | 'get';
+  key: keyof StoreSchema;
+  value?: unknown;
 }
 
 // Create store instance with proper typing
 const store = new Store<StoreSchema>({
   defaults: {
     widgets: [],
-    settings: {
-      startAtLogin: true,
-      theme: 'system'
+    settings: defaultAppSettings
+  },
+  beforeEach: (options: StoreOptions) => {
+    // Validate data before saving
+    if (options.type === 'set') {
+      try {
+        if (options.key === 'widgets') {
+          (options.value as WidgetConfig[]).forEach(validateWidgetConfig);
+        } else if (options.key === 'settings') {
+          validateAppSettings(options.value);
+        }
+      } catch (error) {
+        console.error('Validation error:', error);
+        throw error;
+      }
+    }
+  },
+  migrations: {
+    // Example migration for future schema changes
+    '>=1.0.0': (migrateStore: any) => {
+      try {
+        const data = migrateStore.get('.') as StoreSchema;
+        validateStoreSchema(data);
+      } catch (error) {
+        console.error('Migration validation error:', error);
+        // Reset to defaults if validation fails
+        migrateStore.clear();
+      }
     }
   }
 });
 
-// Type assertion to include the correct method signatures
-export const typedStore = store as unknown as {
-  get<K extends keyof StoreSchema>(key: K): StoreSchema[K];
-  get<K extends keyof StoreSchema>(key: K, defaultValue: StoreSchema[K]): StoreSchema[K];
-  set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void;
-};
-
+// Helper functions for store operations
 export const storeHelpers = {
-  addWidget: (widget: Omit<WidgetConfig, 'id'>) => {
-    const widgets = typedStore.get('widgets');
+  addWidget: (widget: Omit<WidgetConfig, 'id'>): WidgetConfig => {
+    const widgets = (store as any).get('widgets') ?? [];
     const newWidget: WidgetConfig = {
+      ...defaultWidgetConfig,
       ...widget,
-      id: Date.now().toString(),
+      id: Date.now().toString()
     };
-    typedStore.set('widgets', [...widgets, newWidget]);
+    validateWidgetConfig(newWidget);
+    (store as any).set('widgets', [...widgets, newWidget]);
     return newWidget;
   },
 
-  removeWidget: (id: string) => {
-    const widgets = typedStore.get('widgets');
-    typedStore.set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
+  removeWidget: (id: string): void => {
+    const widgets = (store as any).get('widgets') ?? [];
+    (store as any).set('widgets', widgets.filter((w: WidgetConfig) => w.id !== id));
   },
 
-  updateWidget: (id: string, updates: Partial<WidgetConfig>) => {
-    const widgets = typedStore.get('widgets');
-    typedStore.set(
-      'widgets',
-      widgets.map((w: WidgetConfig) => (w.id === id ? { ...w, ...updates } : w))
-    );
+  updateWidget: (id: string, updates: Partial<WidgetConfig>): void => {
+    const widgets = (store as any).get('widgets') ?? [];
+    const updatedWidgets = widgets.map((w: WidgetConfig) => {
+      if (w.id === id) {
+        const updatedWidget = { ...w, ...updates };
+        validateWidgetConfig(updatedWidget);
+        return updatedWidget;
+      }
+      return w;
+    });
+    (store as any).set('widgets', updatedWidgets);
   },
 
-  updateSettings: (updates: Partial<StoreSchema['settings']>) => {
-    const settings = typedStore.get('settings');
-    typedStore.set('settings', { ...settings, ...updates });
+  updateSettings: (updates: Partial<AppSettings>): void => {
+    const settings = (store as any).get('settings') ?? defaultAppSettings;
+    const updatedSettings = { ...settings, ...updates };
+    validateAppSettings(updatedSettings);
+    (store as any).set('settings', updatedSettings);
+
+    // Handle special settings
+    if (updates.startAtLogin !== undefined) {
+      app.setLoginItemSettings({
+        openAtLogin: updates.startAtLogin
+      });
+    }
   },
+
+  // Export configuration
+  exportConfig: (): StoreSchema => {
+    const data = {
+      widgets: (store as any).get('widgets') ?? [],
+      settings: (store as any).get('settings') ?? defaultAppSettings
+    };
+    return validateStoreSchema(data);
+  },
+
+  // Import configuration
+  importConfig: (config: unknown): void => {
+    const validConfig = validateStoreSchema(config);
+    (store as any).clear();
+    (store as any).set('widgets', validConfig.widgets);
+    (store as any).set('settings', validConfig.settings);
+  },
+
+  // Subscribe to changes
+  onConfigChange: (callback: (newValue: StoreSchema) => void): (() => void) => {
+    return (store as any).onDidAnyChange((newValue: unknown) => {
+      try {
+        const validConfig = validateStoreSchema(newValue);
+        callback(validConfig);
+      } catch (error) {
+        console.error('Configuration change validation error:', error);
+      }
+    });
+  }
 };
 
-export { typedStore as store }; 
+export { store }; 
