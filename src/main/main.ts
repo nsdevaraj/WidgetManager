@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import { WindowManager } from './window-manager';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 
@@ -7,6 +8,8 @@ declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
+
+let windowManager: WindowManager | null = null;
 
 const createWindow = (): BrowserWindow => {
   // Create the browser window.
@@ -29,24 +32,8 @@ const createWindow = (): BrowserWindow => {
     show: false,
   });
 
-  // Handle window control events
-  ipcMain.on('window-control', (_, command) => {
-    switch (command) {
-      case 'minimize':
-        mainWindow.minimize();
-        break;
-      case 'maximize':
-        if (mainWindow.isMaximized()) {
-          mainWindow.unmaximize();
-        } else {
-          mainWindow.maximize();
-        }
-        break;
-      case 'close':
-        mainWindow.close();
-        break;
-    }
-  });
+  // Initialize window manager
+  windowManager = new WindowManager(mainWindow);
 
   // Handle window loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
@@ -71,6 +58,14 @@ const createWindow = (): BrowserWindow => {
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
+
+  // Clean up window manager when window is closed
+  mainWindow.on('closed', () => {
+    if (windowManager) {
+      windowManager.dispose();
+      windowManager = null;
+    }
+  });
 
   return mainWindow;
 };

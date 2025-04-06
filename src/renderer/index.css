@@ -8,6 +8,7 @@
   --window-control-active: rgba(0, 0, 0, 0.2);
   --close-hover: #dc2626;
   --close-active: #b91c1c;
+  --resize-handle-size: 6px;
 }
 
 body {
@@ -124,3 +125,5 @@ p {
 .button:hover {
   background-color: #1d4ed8;
 }
+
+/* Resize handles */

@@ -1,5 +1,15 @@
 import type { WidgetConfig, StoreSchema } from '../main/store';
 
+export interface WindowPosition {
+  x: number;
+  y: number;
+}
+
+export interface WindowSize {
+  width: number;
+  height: number;
+}
+
 export interface IElectronAPI {
   // Widget operations
   addWidget: (widget: Omit<WidgetConfig, 'id'>) => Promise<void>;
@@ -15,6 +25,14 @@ export interface IElectronAPI {
   minimizeWindow: () => void;
   maximizeWindow: () => void;
   closeWindow: () => void;
+
+  // Window position and size management
+  getWindowPosition: () => Promise<WindowPosition>;
+  setWindowPosition: (position: WindowPosition) => void;
+  getWindowSize: () => Promise<WindowSize>;
+  setWindowSize: (size: WindowSize) => void;
+  startWindowDrag: () => void;
+  startWindowResize: (direction: 'bottom' | 'right' | 'bottomRight') => void;
 }
 
 declare global {
