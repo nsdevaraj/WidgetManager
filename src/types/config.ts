@@ -31,6 +31,14 @@ export const widgetConfigSchema = z.object({
     customCSS: z.string().optional(),
     initialUrl: z.string().optional(),
     zIndex: z.number().min(0).optional()
+  }).optional(),
+  resourceMetrics: z.object({
+    cpuUsage: z.number().min(0).max(100),
+    memoryUsage: z.number().min(0),
+    fps: z.number().min(0),
+    loadTime: z.number().min(0),
+    networkRequests: z.number().min(0),
+    lastUpdated: z.number().min(0)
   }).optional()
 });
 
@@ -110,4 +118,14 @@ export interface WidgetGroup {
   isVisible: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface WidgetResourceMetrics {
+  widgetId: string;  // ID of the widget these metrics belong to
+  cpuUsage: number;  // CPU usage percentage
+  memoryUsage: number;  // Memory usage in bytes
+  fps: number;  // Frames per second
+  loadTime: number;  // Initial load time in milliseconds
+  networkRequests: number;  // Number of active network requests
+  lastUpdated: number;  // Timestamp of last metrics update
 } 

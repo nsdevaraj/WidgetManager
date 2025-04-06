@@ -6,6 +6,8 @@ import { ClockWidget } from './widgets/ClockWidget';
 import { WeatherWidget } from './widgets/WeatherWidget';
 import { NotesWidget } from './widgets/NotesWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
+import { WidgetMetrics } from './WidgetMetrics';
+import '../styles/WidgetMetrics.css';
 
 interface WidgetProps {
   config: WidgetConfig;
@@ -408,6 +410,7 @@ export const Widget: React.FC<WidgetProps> = ({
           currentZIndex={config.settings?.zIndex ?? 0}
         />
       )}
+      <WidgetMetrics widgetId={config.id} />
     </>
   );
 }; 

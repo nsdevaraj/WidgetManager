@@ -1,4 +1,5 @@
-import { WidgetConfig, AppSettings } from './config';
+import { WidgetConfig, AppSettings, WidgetResourceMetrics } from './config';
+import { IpcRendererEvent } from 'electron';
 
 export interface Screen {
   id: number;
@@ -32,8 +33,8 @@ export interface IElectronAPI {
   resetSettings: () => Promise<AppSettings>;
 
   // Event handling
-  on: (channel: string, callback: (...args: any[]) => void) => void;
-  off: (channel: string, callback: (...args: any[]) => void) => void;
+  on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+  off: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
   invoke: (channel: string, ...args: any[]) => Promise<any>;
 
   // Widget management
@@ -65,6 +66,11 @@ export interface IElectronAPI {
   createBrowserView: (id: string, url: string) => void;
   destroyBrowserView: (id: string) => void;
   setBrowserViewBounds: (id: string, bounds: Bounds) => void;
+
+  // Resource monitoring
+  getWidgetMetrics: (widgetId: string) => Promise<WidgetResourceMetrics | null>;
+  onMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => void;
+  offMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => void;
 }
 
 declare global {
@@ -83,6 +89,10 @@ declare module 'electron' {
     invoke(channel: 'widget:add', config: Partial<WidgetConfig>): Promise<WidgetConfig>;
     invoke(channel: 'widget:update', data: { id: string; updates: Partial<WidgetConfig> }): Promise<WidgetConfig>;
     invoke(channel: 'widget:delete', id: string): Promise<void>;
+    invoke(channel: `widget:${string}:get-metrics`): Promise<WidgetResourceMetrics | null>;
     invoke(channel: string, ...args: any[]): Promise<any>;
+
+    on(channel: 'widget:metrics-update', listener: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void): this;
+    removeListener(channel: 'widget:metrics-update', listener: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void): this;
   }
 } 

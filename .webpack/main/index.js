@@ -19380,20 +19380,42 @@ exports.initializeWidgetManagement = initializeWidgetManagement;
 /*!***********************************!*\
   !*** ./src/main/widget-window.ts ***!
   \***********************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try {
+            step(generator.next(value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function rejected(value) { try {
+            step(generator["throw"](value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WidgetWindow = void 0;
 const electron_1 = __webpack_require__(/*! electron */ "electron");
 class WidgetWindow {
     constructor(config) {
         this.browserView = null;
+        this.metricsInterval = null;
+        this.startTime = Date.now();
         this.config = config;
         this.window = this.createWindow();
         this.setupWindow();
         this.setupIPC();
+        this.startResourceMonitoring();
     }
     createWindow() {
         var _a, _b;
@@ -19497,6 +19519,24 @@ class WidgetWindow {
                 this.destroyBrowserView();
             }
         });
+        // Add metrics-related IPC handlers
+        const metricsChannel = `widget:${this.config.id}:get-metrics`;
+        electron_1.ipcMain.handle(metricsChannel, () => __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield this.collectResourceMetrics();
+            }
+            catch (error) {
+                console.error('Error getting widget metrics:', error);
+                return null;
+            }
+        }));
+        // Clean up IPC handlers when window is closed
+        this.window.on('closed', () => {
+            if (this.metricsInterval) {
+                clearInterval(this.metricsInterval);
+            }
+            electron_1.ipcMain.removeHandler(metricsChannel);
+        });
     }
     createBrowserView(url) {
         // Destroy existing BrowserView if any
@@ -19571,7 +19611,109 @@ class WidgetWindow {
     getConfig() {
         return this.config;
     }
+    collectResourceMetrics() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const memoryInfo = yield this.window.webContents.executeJavaScript(`
+      new Promise(resolve => {
+        if (window.performance && performance.memory) {
+          resolve({
+            private: performance.memory.usedJSHeapSize
+          });
+        } else {
+          resolve({
+            private: 0
+          });
+        }
+      });
+    `);
+            const cpuInfo = {
+                percentCPUUsage: yield this.window.webContents.executeJavaScript(`
+        new Promise(resolve => {
+          if (window.performance && performance.now) {
+            const start = performance.now();
+            const iterations = 1000000;
+            for (let i = 0; i < iterations; i++) {
+              Math.sqrt(i);
+            }
+            const end = performance.now();
+            const duration = end - start;
+            resolve((duration / 10) * (navigator.hardwareConcurrency || 1));
+          } else {
+            resolve(0);
+          }
+        });
+      `)
+            };
+            const loadTime = Date.now() - this.startTime;
+            // Get FPS using requestAnimationFrame
+            const fpsStats = yield this.window.webContents.executeJavaScript(`
+      new Promise(resolve => {
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        function countFrame() {
+          const now = performance.now();
+          frameCount++;
+          
+          if (now - lastTime >= 1000) {
+            resolve(frameCount);
+          } else {
+            requestAnimationFrame(countFrame);
+          }
+        }
+        
+        requestAnimationFrame(countFrame);
+      });
+    `);
+            // Get network request count
+            const networkStats = yield this.window.webContents.executeJavaScript(`
+      new Promise(resolve => {
+        const entries = performance.getEntriesByType('resource');
+        resolve(entries.length);
+      });
+    `);
+            return {
+                cpuUsage: Math.round(cpuInfo.percentCPUUsage),
+                memoryUsage: memoryInfo.private,
+                fps: Math.round(fpsStats),
+                loadTime,
+                networkRequests: networkStats,
+                lastUpdated: Date.now()
+            };
+        });
+    }
+    startResourceMonitoring() {
+        // Collect metrics every 5 seconds
+        this.metricsInterval = setInterval(() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!this.window.isDestroyed()) {
+                    const metrics = yield this.collectResourceMetrics();
+                    // Update the config with new metrics
+                    this.config.resourceMetrics = metrics;
+                    // Emit metrics update event
+                    this.window.webContents.send('widget:metrics-update', metrics);
+                    // Log warning if resource usage is high
+                    if (metrics.cpuUsage > 80) {
+                        console.warn(`High CPU usage detected for widget ${this.config.id}: ${metrics.cpuUsage}%`);
+                    }
+                    if (metrics.memoryUsage > 100 * 1024 * 1024) { // 100MB
+                        console.warn(`High memory usage detected for widget ${this.config.id}: ${Math.round(metrics.memoryUsage / 1024 / 1024)}MB`);
+                    }
+                }
+            }
+            catch (error) {
+                console.error('Error collecting resource metrics:', error);
+            }
+        }), 5000);
+        // Start monitoring when window is ready
+        this.window.once('ready-to-show', () => {
+            this.startTime = Date.now();
+        });
+    }
     dispose() {
+        if (this.metricsInterval) {
+            clearInterval(this.metricsInterval);
+        }
         this.destroyBrowserView();
         try {
             if (!this.window.isDestroyed()) {
@@ -19812,6 +19954,14 @@ exports.widgetConfigSchema = zod_1.z.object({
         customCSS: zod_1.z.string().optional(),
         initialUrl: zod_1.z.string().optional(),
         zIndex: zod_1.z.number().min(0).optional()
+    }).optional(),
+    resourceMetrics: zod_1.z.object({
+        cpuUsage: zod_1.z.number().min(0).max(100),
+        memoryUsage: zod_1.z.number().min(0),
+        fps: zod_1.z.number().min(0),
+        loadTime: zod_1.z.number().min(0),
+        networkRequests: zod_1.z.number().min(0),
+        lastUpdated: zod_1.z.number().min(0)
     }).optional()
 });
 // Application settings schema

@@ -1,6 +1,6 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import { IElectronAPI } from '../types/electron';
-import { AppSettings } from '../types/config';
+import { AppSettings, WidgetResourceMetrics } from '../types/config';
 
 // Create the API object for widget windows
 const api: IElectronAPI = {
@@ -59,7 +59,20 @@ const api: IElectronAPI = {
   destroyBrowserView: (id: string) => 
     ipcRenderer.send('browserView:destroy', id),
   setBrowserViewBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) => 
-    ipcRenderer.send('browserView:setBounds', { id, bounds })
+    ipcRenderer.send('browserView:setBounds', { id, bounds }),
+
+  // Resource monitoring
+  getWidgetMetrics: async (widgetId: string): Promise<WidgetResourceMetrics | null> => {
+    return await ipcRenderer.invoke(`widget:${widgetId}:get-metrics`);
+  },
+
+  onMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => {
+    ipcRenderer.on('widget:metrics-update', callback);
+  },
+
+  offMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => {
+    ipcRenderer.removeListener('widget:metrics-update', callback);
+  },
 };
 
 // Initialize widget configuration
