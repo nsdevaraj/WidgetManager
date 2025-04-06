@@ -31,7 +31,13 @@ export class WidgetWindow {
         contextIsolation: true,
         sandbox: true,
         webviewTag: false,
+        webSecurity: true,
+        allowRunningInsecureContent: false,
         preload: WIDGET_WINDOW_PRELOAD_WEBPACK_ENTRY,
+        // Allow iframes to load content
+        webgl: true,
+        images: true,
+        javascript: true,
       },
     });
   }

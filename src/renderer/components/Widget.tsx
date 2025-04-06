@@ -125,6 +125,20 @@ export const Widget: React.FC<WidgetProps> = ({
         {config.type === 'weather' && <div>Weather Widget</div>}
         {config.type === 'notes' && <div>Notes Widget</div>}
         {config.type === 'calendar' && <div>Calendar Widget</div>}
+        {config.type === 'url' && (
+          <iframe
+            src={config.settings?.initialUrl || 'about:blank'}
+            style={{
+              width: '100%',
+              height: 'calc(100% - 36px)', // Subtract header height
+              border: 'none',
+              borderRadius: '0 0 8px 8px'
+            }}
+            title="URL Widget"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+            allow="fullscreen; geolocation; microphone; camera"
+          />
+        )}
       </div>
       {!standalone && (
         <div 

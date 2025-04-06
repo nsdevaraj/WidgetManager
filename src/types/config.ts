@@ -10,12 +10,12 @@ export interface Size {
   height: number;
 }
 
-export type WidgetType = 'clock' | 'weather' | 'notes' | 'calendar';
+export type WidgetType = 'clock' | 'weather' | 'notes' | 'calendar' | 'url';
 
 // Widget configuration schema
 export const widgetConfigSchema = z.object({
   id: z.string(),
-  type: z.enum(['clock', 'weather', 'notes', 'calendar']),
+  type: z.enum(['clock', 'weather', 'notes', 'calendar', 'url']),
   position: z.object({
     x: z.number(),
     y: z.number()
@@ -28,7 +28,8 @@ export const widgetConfigSchema = z.object({
   settings: z.object({
     isAlwaysOnTop: z.boolean().optional(),
     opacity: z.number().min(0.1).max(1).optional(),
-    customCSS: z.string().optional()
+    customCSS: z.string().optional(),
+    initialUrl: z.string().optional()
   }).optional()
 });
 
@@ -62,7 +63,8 @@ export const defaultWidgetConfig: Partial<WidgetConfig> = {
   isVisible: true,
   settings: {
     isAlwaysOnTop: false,
-    opacity: 1
+    opacity: 1,
+    initialUrl: 'https://www.google.com'
   }
 };
 

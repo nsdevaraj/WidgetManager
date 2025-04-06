@@ -31,7 +31,7 @@ module.exports = {
       config: {
         mainConfig: './webpack.main.config.js',
         preloadConfig: './webpack.preload.config.js',
-        devContentSecurityPolicy: "connect-src 'self' * 'unsafe-eval'",
+        devContentSecurityPolicy: "default-src 'self' * 'unsafe-inline' 'unsafe-eval'; frame-src *; connect-src 'self' * 'unsafe-eval'",
         renderer: {
           config: './webpack.renderer.config.js',
           entryPoints: [

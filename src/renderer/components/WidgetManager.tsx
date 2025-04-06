@@ -9,6 +9,7 @@ interface WidgetFormData {
     isAlwaysOnTop: boolean;
     opacity: number;
     customCSS: string;
+    initialUrl?: string;
   };
 }
 
@@ -250,6 +251,7 @@ export const WidgetManager: React.FC = () => {
                   <option value="weather">Weather</option>
                   <option value="notes">Notes</option>
                   <option value="calendar">Calendar</option>
+                  <option value="url">URL</option>
                 </select>
               </div>
             )}
@@ -327,6 +329,22 @@ export const WidgetManager: React.FC = () => {
                 disabled={isLoading}
               />
             </div>
+
+            {formData.type === 'url' && (
+              <div className="form-group">
+                <label>Initial URL:</label>
+                <input
+                  type="url"
+                  value={formData.settings.initialUrl || ''}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    settings: { ...formData.settings, initialUrl: e.target.value }
+                  })}
+                  placeholder="Enter URL (e.g., https://example.com)"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
 
             <div className="form-actions">
               <button type="submit" disabled={isLoading}>

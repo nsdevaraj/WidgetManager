@@ -19225,7 +19225,13 @@ class WidgetWindow {
                 contextIsolation: true,
                 sandbox: true,
                 webviewTag: false,
+                webSecurity: true,
+                allowRunningInsecureContent: false,
                 preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/widget_window/preload.js',
+                // Allow iframes to load content
+                webgl: true,
+                images: true,
+                javascript: true,
             },
         });
     }
@@ -19534,7 +19540,7 @@ const zod_1 = __webpack_require__(/*! zod */ "./node_modules/zod/lib/index.js");
 // Widget configuration schema
 exports.widgetConfigSchema = zod_1.z.object({
     id: zod_1.z.string(),
-    type: zod_1.z.enum(['clock', 'weather', 'notes', 'calendar']),
+    type: zod_1.z.enum(['clock', 'weather', 'notes', 'calendar', 'url']),
     position: zod_1.z.object({
         x: zod_1.z.number(),
         y: zod_1.z.number()
@@ -19547,7 +19553,8 @@ exports.widgetConfigSchema = zod_1.z.object({
     settings: zod_1.z.object({
         isAlwaysOnTop: zod_1.z.boolean().optional(),
         opacity: zod_1.z.number().min(0.1).max(1).optional(),
-        customCSS: zod_1.z.string().optional()
+        customCSS: zod_1.z.string().optional(),
+        initialUrl: zod_1.z.string().optional()
     }).optional()
 });
 // Application settings schema
@@ -19573,7 +19580,8 @@ exports.defaultWidgetConfig = {
     isVisible: true,
     settings: {
         isAlwaysOnTop: false,
-        opacity: 1
+        opacity: 1,
+        initialUrl: 'https://www.google.com'
     }
 };
 exports.defaultAppSettings = {
