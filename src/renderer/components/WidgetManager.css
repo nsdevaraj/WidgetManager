@@ -2,6 +2,81 @@
   display: flex;
   gap: 2rem;
   height: 100%;
+  position: relative;
+}
+
+.widget-manager.loading {
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-message {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--danger-bg-color);
+  color: var(--danger-color);
+  padding: 1rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.error-message button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--danger-color);
+  border-radius: 4px;
+  background: none;
+  color: var(--danger-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-message button:hover {
+  background-color: var(--danger-color);
+  color: white;
 }
 
 .widget-list {
@@ -29,8 +104,31 @@
   transition: background-color 0.2s;
 }
 
-.add-widget-button:hover {
+.add-widget-button:hover:not(:disabled) {
   background-color: var(--primary-hover-color);
+}
+
+.add-widget-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-widgets {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.no-widgets p:first-child {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.no-widgets p:last-child {
+  font-size: 0.9rem;
 }
 
 .widget-item {
@@ -85,14 +183,16 @@
   transition: all 0.2s;
 }
 
-.edit-button:hover {
+.edit-button:hover:not(:disabled),
+.remove-button:hover:not(:disabled) {
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
-.remove-button:hover {
-  border-color: var(--danger-color);
-  color: var(--danger-color);
+.edit-button:disabled,
+.remove-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .widget-form {
@@ -123,23 +223,29 @@
 
 .size-inputs input {
   width: 80px;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
-.size-inputs span {
-  color: var(--text-muted);
+.size-inputs input:disabled {
+  background-color: var(--disabled-bg-color);
+  cursor: not-allowed;
 }
 
-input[type="text"],
-input[type="number"],
-select,
-textarea {
+select {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  background-color: var(--input-bg-color);
-  color: var(--text-color);
   font-size: 0.9rem;
+  background-color: white;
+}
+
+select:disabled {
+  background-color: var(--disabled-bg-color);
+  cursor: not-allowed;
 }
 
 input[type="range"] {
@@ -147,9 +253,25 @@ input[type="range"] {
   margin: 0.5rem 0;
 }
 
+input[type="range"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 textarea {
+  width: 100%;
   min-height: 100px;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.9rem;
   font-family: monospace;
+  resize: vertical;
+}
+
+textarea:disabled {
+  background-color: var(--disabled-bg-color);
+  cursor: not-allowed;
 }
 
 .form-actions {
@@ -160,27 +282,38 @@ textarea {
 
 .form-actions button {
   padding: 0.75rem 1.5rem;
-  border: none;
   border-radius: 4px;
-  cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.2s;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .form-actions button[type="submit"] {
   background-color: var(--primary-color);
   color: white;
+  border: none;
 }
 
-.form-actions button[type="submit"]:hover {
+.form-actions button[type="submit"]:hover:not(:disabled) {
   background-color: var(--primary-hover-color);
 }
 
-.cancel-button {
-  background-color: var(--danger-color);
-  color: white;
+.form-actions button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.cancel-button:hover {
-  background-color: var(--danger-hover-color);
+.form-actions .cancel-button {
+  background: none;
+  border: 1px solid var(--border-color);
+}
+
+.form-actions .cancel-button:hover:not(:disabled) {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.form-actions .cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 } 

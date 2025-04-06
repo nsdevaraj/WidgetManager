@@ -16,6 +16,8 @@ export const WidgetManager: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<WidgetFormData>({
     type: 'clock',
     size: {
@@ -30,13 +32,26 @@ export const WidgetManager: React.FC = () => {
   });
 
   useEffect(() => {
-    // Load widgets from store
-    window.api.listWidgets().then((loadedWidgets: WidgetConfig[]) => {
-      setWidgets(loadedWidgets);
-    });
+    loadWidgets();
   }, []);
 
+  const loadWidgets = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const loadedWidgets = await window.api.listWidgets();
+      setWidgets(loadedWidgets);
+    } catch (error) {
+      console.error('Failed to load widgets:', error);
+      setError('Failed to load widgets. Please try refreshing the page.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAddWidget = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const newWidget = await window.api.addWidget({
         type: formData.type,
@@ -53,13 +68,18 @@ export const WidgetManager: React.FC = () => {
       });
       setWidgets([...widgets, newWidget]);
       setIsEditing(false);
+      setError(null);
     } catch (error) {
       console.error('Error adding widget:', error);
-      // TODO: Show error message to user
+      setError('Failed to add widget. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleUpdateWidget = async (id: string) => {
+    setIsLoading(true);
+    setError(null);
     try {
       const updatedWidget = await window.api.updateWidget(id, {
         size: {
@@ -78,13 +98,18 @@ export const WidgetManager: React.FC = () => {
       setWidgets(updatedWidgets);
       setIsEditing(false);
       setSelectedWidget(null);
+      setError(null);
     } catch (error) {
       console.error('Error updating widget:', error);
-      // TODO: Show error message to user
+      setError('Failed to update widget. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRemoveWidget = async (id: string) => {
+    setIsLoading(true);
+    setError(null);
     try {
       await window.api.deleteWidget(id);
       setWidgets(widgets.filter(w => w.id !== id));
@@ -92,9 +117,12 @@ export const WidgetManager: React.FC = () => {
         setSelectedWidget(null);
         setIsEditing(false);
       }
+      setError(null);
     } catch (error) {
       console.error('Error removing widget:', error);
-      // TODO: Show error message to user
+      setError('Failed to remove widget. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,10 +141,27 @@ export const WidgetManager: React.FC = () => {
       }
     });
     setIsEditing(true);
+    setError(null);
   };
+
+  if (isLoading && widgets.length === 0) {
+    return (
+      <div className="widget-manager loading">
+        <div className="loading-spinner" />
+        <p>Loading widgets...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="widget-manager">
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
+      
       <div className="widget-list">
         <div className="widget-list-header">
           <h3>Installed Widgets</h3>
@@ -137,39 +182,50 @@ export const WidgetManager: React.FC = () => {
                 }
               });
               setIsEditing(true);
+              setError(null);
             }}
+            disabled={isLoading}
           >
             Add Widget
           </button>
         </div>
         
-        {widgets.map(widget => (
-          <div
-            key={widget.id}
-            className={`widget-item ${selectedWidget === widget.id ? 'selected' : ''}`}
-          >
-            <div className="widget-info">
-              <span className="widget-type">{widget.type}</span>
-              <span className="widget-size">
-                {widget.size.width}×{widget.size.height}
-              </span>
-            </div>
-            <div className="widget-actions">
-              <button
-                className="edit-button"
-                onClick={() => handleEditWidget(widget)}
-              >
-                Edit
-              </button>
-              <button
-                className="remove-button"
-                onClick={() => handleRemoveWidget(widget.id)}
-              >
-                Remove
-              </button>
-            </div>
+        {widgets.length === 0 ? (
+          <div className="no-widgets">
+            <p>No widgets installed yet.</p>
+            <p>Click "Add Widget" to create your first widget!</p>
           </div>
-        ))}
+        ) : (
+          widgets.map(widget => (
+            <div
+              key={widget.id}
+              className={`widget-item ${selectedWidget === widget.id ? 'selected' : ''}`}
+            >
+              <div className="widget-info">
+                <span className="widget-type">{widget.type}</span>
+                <span className="widget-size">
+                  {widget.size.width}×{widget.size.height}
+                </span>
+              </div>
+              <div className="widget-actions">
+                <button
+                  className="edit-button"
+                  onClick={() => handleEditWidget(widget)}
+                  disabled={isLoading}
+                >
+                  Edit
+                </button>
+                <button
+                  className="remove-button"
+                  onClick={() => handleRemoveWidget(widget.id)}
+                  disabled={isLoading}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {isEditing && (
@@ -188,6 +244,7 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     type: e.target.value as WidgetType
                   })}
+                  disabled={isLoading}
                 >
                   <option value="clock">Clock</option>
                   <option value="weather">Weather</option>
@@ -209,6 +266,7 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     size: { ...formData.size, width: Number(e.target.value) }
                   })}
+                  disabled={isLoading}
                 />
                 <span>×</span>
                 <input
@@ -220,6 +278,7 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     size: { ...formData.size, height: Number(e.target.value) }
                   })}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -233,6 +292,7 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     settings: { ...formData.settings, isAlwaysOnTop: e.target.checked }
                   })}
+                  disabled={isLoading}
                 />
                 Always on Top
               </label>
@@ -250,6 +310,7 @@ export const WidgetManager: React.FC = () => {
                   ...formData,
                   settings: { ...formData.settings, opacity: Number(e.target.value) }
                 })}
+                disabled={isLoading}
               />
               <span>{(formData.settings.opacity * 100).toFixed(0)}%</span>
             </div>
@@ -263,12 +324,20 @@ export const WidgetManager: React.FC = () => {
                   settings: { ...formData.settings, customCSS: e.target.value }
                 })}
                 placeholder="Enter custom CSS rules..."
+                disabled={isLoading}
               />
             </div>
 
             <div className="form-actions">
-              <button type="submit">
-                {selectedWidget ? 'Update Widget' : 'Add Widget'}
+              <button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <span>
+                    <span className="loading-spinner small" />
+                    {selectedWidget ? 'Updating...' : 'Adding...'}
+                  </span>
+                ) : (
+                  selectedWidget ? 'Update Widget' : 'Add Widget'
+                )}
               </button>
               <button
                 type="button"
@@ -276,7 +345,9 @@ export const WidgetManager: React.FC = () => {
                 onClick={() => {
                   setIsEditing(false);
                   setSelectedWidget(null);
+                  setError(null);
                 }}
+                disabled={isLoading}
               >
                 Cancel
               </button>
