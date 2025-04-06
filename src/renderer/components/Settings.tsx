@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Settings.css';
 import { WindowChrome } from './WindowChrome';
+import { WidgetManager } from './WidgetManager';
 
 type SettingsTab = 'widgets' | 'preferences';
 
@@ -30,10 +31,7 @@ export const Settings: React.FC = () => {
           {activeTab === 'widgets' && (
             <div className="widgets-section">
               <h2>Widget Management</h2>
-              <div className="widget-list">
-                {/* Widget list will be implemented in subtask 5.2 */}
-                <p className="placeholder-text">Widget list coming soon...</p>
-              </div>
+              <WidgetManager />
             </div>
           )}
           

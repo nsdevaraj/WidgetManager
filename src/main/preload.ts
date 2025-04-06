@@ -10,7 +10,7 @@ const api = {
   listWidgets: () => ipcRenderer.invoke('widget:list'),
   addWidget: (config: any) => ipcRenderer.invoke('widget:add', config),
   updateWidget: (id: string, updates: any) => ipcRenderer.invoke('widget:update', { id, updates }),
-  deleteWidget: (id: string) => ipcRenderer.invoke('widget:delete', id),
+  deleteWidget: (id: string) => ipcRenderer.invoke('widget:remove', id),
   
   // Screen management
   getScreens: () => ipcRenderer.invoke('screen:get-all'),
