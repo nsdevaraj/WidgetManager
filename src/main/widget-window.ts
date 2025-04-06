@@ -27,6 +27,7 @@ export class WidgetWindow {
       alwaysOnTop: this.config.settings?.isAlwaysOnTop ?? false,
       skipTaskbar: true,
       movable: true,
+      resizable: true,
       hasShadow: true,
       webPreferences: {
         nodeIntegration: false,
@@ -71,6 +72,26 @@ export class WidgetWindow {
       this.updateConfig({
         position: { x, y }
       });
+    });
+
+    // Handle window resize events
+    this.window.on('resize', () => {
+      const [width, height] = this.window.getSize();
+      this.updateConfig({
+        size: { width, height }
+      });
+
+      // Update BrowserView size if it exists
+      if (this.browserView) {
+        const bounds = this.window.getBounds();
+        // Account for the header height (36px)
+        this.browserView.setBounds({
+          x: 0,
+          y: 36,
+          width: bounds.width,
+          height: bounds.height - 36
+        });
+      }
     });
   }
 
@@ -124,6 +145,17 @@ export class WidgetWindow {
 
     // Add to window and load URL
     this.window.addBrowserView(this.browserView);
+    
+    // Set initial bounds
+    const bounds = this.window.getBounds();
+    this.browserView.setBounds({
+      x: 0,
+      y: 36, // Account for header height
+      width: bounds.width,
+      height: bounds.height - 36
+    });
+
+    // Load the URL
     this.browserView.webContents.loadURL(url).catch(err => {
       console.error('Failed to load URL in BrowserView:', err);
     });

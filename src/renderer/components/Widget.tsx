@@ -108,6 +108,38 @@ export const Widget: React.FC<WidgetProps> = ({
     };
   }, [isDragging, standalone, onPositionChange, onDragEnd]);
 
+  // Handle window resize for standalone widgets
+  useEffect(() => {
+    if (!standalone) return;
+
+    const handleResize = () => {
+      // Update widget size based on window size
+      const size = {
+        width: window.innerWidth,
+        height: window.innerHeight
+      };
+
+      // Update BrowserView bounds if this is a URL widget
+      if (config.type === 'url' && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        window.api.setBrowserViewBounds(config.id, {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Initial size update
+    handleResize();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [standalone, config.type, config.id]);
+
   const style: React.CSSProperties = standalone ? {
     width: '100%',
     height: '100%',

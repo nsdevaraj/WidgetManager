@@ -16,6 +16,13 @@ export interface Screen {
   scaleFactor: number;
 }
 
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface IElectronAPI {
   // Widget management
   listWidgets: () => Promise<any[]>;
@@ -42,5 +49,5 @@ export interface IElectronAPI {
   // BrowserView management
   createBrowserView: (id: string, url: string) => void;
   destroyBrowserView: (id: string) => void;
-  setBrowserViewBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) => void;
+  setBrowserViewBounds: (id: string, bounds: Bounds) => void;
 } 
