@@ -18496,7 +18496,7 @@ function initializeIpcHandlers() {
     electron_1.ipcMain.handle('widget:add', (_, widget) => __awaiter(this, void 0, void 0, function* () {
         return widgetManager.addWidget(widget);
     }));
-    electron_1.ipcMain.handle('widget:remove', (_, id) => __awaiter(this, void 0, void 0, function* () {
+    electron_1.ipcMain.handle('widget:delete', (_, id) => __awaiter(this, void 0, void 0, function* () {
         return widgetManager.removeWidget(id);
     }));
     electron_1.ipcMain.handle('widget:update', (_, { id, updates }) => __awaiter(this, void 0, void 0, function* () {
@@ -18617,8 +18617,8 @@ if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electro
     electron_1.app.quit();
 }
 // Initialize managers at the application level
-let widgetManager = (0, widget_manager_1.initializeWidgetManagement)();
-let settingsManager = (0, settings_manager_1.initializeSettingsManagement)();
+let widgetManager = null;
+let settingsManager = null;
 // Track if IPC handlers have been initialized
 let ipcHandlersInitialized = false;
 const createWindow = () => {
@@ -18626,7 +18626,7 @@ const createWindow = () => {
     const mainWindow = new electron_1.BrowserWindow({
         height: 600,
         width: 800,
-        frame: false,
+        frame: true,
         transparent: true,
         webPreferences: {
             nodeIntegration: false,
@@ -18640,6 +18640,9 @@ const createWindow = () => {
         minHeight: 300,
         // Enable window to be shown only when ready
         show: false,
+        // Add window styling
+        backgroundColor: '#ffffff',
+        titleBarStyle: 'hidden', // Hide title bar but keep window controls
     });
     // Initialize window-specific managers
     (0, window_manager_1.initializeWindowManagement)(mainWindow);
@@ -18676,6 +18679,9 @@ exports.createWindow = createWindow;
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 electron_1.app.whenReady().then(() => {
+    // Initialize managers
+    widgetManager = (0, widget_manager_1.initializeWidgetManagement)();
+    settingsManager = (0, settings_manager_1.initializeSettingsManagement)();
     (0, exports.createWindow)();
     electron_1.app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
@@ -19103,8 +19109,31 @@ class WidgetManager {
             if (!widgetWindow) {
                 throw new Error(`Widget with id ${id} not found`);
             }
-            // Update window first
-            widgetWindow.updateConfig(updates);
+            // Validate updates before applying
+            const validatedUpdates = {};
+            if (updates.position) {
+                validatedUpdates.position = {
+                    x: Number(updates.position.x),
+                    y: Number(updates.position.y)
+                };
+            }
+            if (updates.size) {
+                validatedUpdates.size = {
+                    width: Math.max(50, Number(updates.size.width)),
+                    height: Math.max(50, Number(updates.size.height))
+                };
+            }
+            if (updates.settings) {
+                validatedUpdates.settings = {
+                    isAlwaysOnTop: updates.settings.isAlwaysOnTop !== undefined ?
+                        Boolean(updates.settings.isAlwaysOnTop) : undefined,
+                    opacity: updates.settings.opacity !== undefined ?
+                        Math.min(1, Math.max(0.1, Number(updates.settings.opacity))) : undefined,
+                    customCSS: updates.settings.customCSS
+                };
+            }
+            // Update window with validated values
+            widgetWindow.updateConfig(validatedUpdates);
             // Get the updated config from the window
             const updatedConfig = widgetWindow.getConfig();
             // Update store with the full config
@@ -19145,7 +19174,7 @@ class WidgetManager {
         }
     }
     dispose() {
-        // Dispose all widget windows
+        // Clean up all widget windows
         this.widgets.forEach(widget => widget.dispose());
         this.widgets.clear();
         WidgetManager.instance = null;
@@ -19218,32 +19247,68 @@ class WidgetWindow {
         });
     }
     updateConfig(updates) {
-        // Update position if specified
-        if (updates.position) {
-            this.window.setPosition(updates.position.x, updates.position.y);
-        }
-        // Update size if specified
-        if (updates.size) {
-            this.window.setSize(updates.size.width, updates.size.height);
-        }
-        // Update settings if specified
-        if (updates.settings) {
-            if (updates.settings.isAlwaysOnTop !== undefined) {
-                this.window.setAlwaysOnTop(updates.settings.isAlwaysOnTop);
+        var _a, _b, _c, _d;
+        try {
+            // Update position if specified
+            if (updates.position) {
+                const x = Number(updates.position.x);
+                const y = Number(updates.position.y);
+                if (isNaN(x) || isNaN(y)) {
+                    throw new Error('Invalid position values');
+                }
+                this.window.setPosition(x, y);
             }
-            if (updates.settings.opacity !== undefined) {
-                this.window.setOpacity(updates.settings.opacity);
+            // Update size if specified
+            if (updates.size) {
+                const width = Number(updates.size.width);
+                const height = Number(updates.size.height);
+                if (isNaN(width) || isNaN(height) || width < 50 || height < 50) {
+                    throw new Error('Invalid size values');
+                }
+                this.window.setSize(width, height);
             }
+            // Update settings if specified
+            if (updates.settings) {
+                if (updates.settings.isAlwaysOnTop !== undefined) {
+                    this.window.setAlwaysOnTop(Boolean(updates.settings.isAlwaysOnTop));
+                }
+                if (updates.settings.opacity !== undefined) {
+                    const opacity = Number(updates.settings.opacity);
+                    if (isNaN(opacity) || opacity < 0.1 || opacity > 1) {
+                        throw new Error('Invalid opacity value');
+                    }
+                    this.window.setOpacity(opacity);
+                }
+            }
+            // Update the stored config with validated values
+            this.config = Object.assign(Object.assign(Object.assign({}, this.config), updates), { position: updates.position ? {
+                    x: Number(updates.position.x),
+                    y: Number(updates.position.y)
+                } : this.config.position, size: updates.size ? {
+                    width: Number(updates.size.width),
+                    height: Number(updates.size.height)
+                } : this.config.size, settings: Object.assign(Object.assign(Object.assign({}, this.config.settings), updates.settings), { isAlwaysOnTop: ((_a = updates.settings) === null || _a === void 0 ? void 0 : _a.isAlwaysOnTop) !== undefined ?
+                        Boolean(updates.settings.isAlwaysOnTop) :
+                        (_b = this.config.settings) === null || _b === void 0 ? void 0 : _b.isAlwaysOnTop, opacity: ((_c = updates.settings) === null || _c === void 0 ? void 0 : _c.opacity) !== undefined ?
+                        Number(updates.settings.opacity) :
+                        (_d = this.config.settings) === null || _d === void 0 ? void 0 : _d.opacity }) });
         }
-        // Update the stored config
-        this.config = Object.assign(Object.assign({}, this.config), updates);
+        catch (error) {
+            console.error('Error updating widget config:', error);
+            throw error;
+        }
     }
     getConfig() {
         return this.config;
     }
     dispose() {
-        if (!this.window.isDestroyed()) {
-            this.window.close();
+        try {
+            if (!this.window.isDestroyed()) {
+                this.window.destroy();
+            }
+        }
+        catch (error) {
+            console.error('Error disposing widget window:', error);
         }
     }
 }

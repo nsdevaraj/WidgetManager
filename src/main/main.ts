@@ -17,8 +17,8 @@ if (require('electron-squirrel-startup')) {
 }
 
 // Initialize managers at the application level
-let widgetManager = initializeWidgetManagement();
-let settingsManager = initializeSettingsManagement();
+let widgetManager: WidgetManager | null = null;
+let settingsManager: SettingsManager | null = null;
 
 // Track if IPC handlers have been initialized
 let ipcHandlersInitialized = false;
@@ -28,8 +28,8 @@ export const createWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
     height: 600,
     width: 800,
-    frame: false, // Make window frameless
-    transparent: true, // Enable transparency for custom chrome
+    frame: true, // Enable window frame for better interaction
+    transparent: true, // Disable transparency for better interaction
     webPreferences: {
       nodeIntegration: false, // Disable node integration for security
       contextIsolation: true, // Enable context isolation
@@ -42,6 +42,9 @@ export const createWindow = (): BrowserWindow => {
     minHeight: 300,
     // Enable window to be shown only when ready
     show: false,
+    // Add window styling
+    backgroundColor: '#ffffff', // Set background color
+    titleBarStyle: 'hidden', // Hide title bar but keep window controls
   });
 
   // Initialize window-specific managers
@@ -85,6 +88,10 @@ export const createWindow = (): BrowserWindow => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Initialize managers
+  widgetManager = initializeWidgetManagement();
+  settingsManager = initializeSettingsManagement();
+
   createWindow();
 
   app.on('activate', function () {

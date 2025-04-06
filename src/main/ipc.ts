@@ -17,7 +17,7 @@ export function initializeIpcHandlers() {
     return widgetManager.addWidget(widget);
   });
 
-  ipcMain.handle('widget:remove', async (_, id) => {
+  ipcMain.handle('widget:delete', async (_, id) => {
     return widgetManager.removeWidget(id);
   });
 

@@ -57,37 +57,81 @@ export class WidgetWindow {
   }
 
   public updateConfig(updates: Partial<WidgetConfig>) {
-    // Update position if specified
-    if (updates.position) {
-      this.window.setPosition(updates.position.x, updates.position.y);
-    }
-
-    // Update size if specified
-    if (updates.size) {
-      this.window.setSize(updates.size.width, updates.size.height);
-    }
-
-    // Update settings if specified
-    if (updates.settings) {
-      if (updates.settings.isAlwaysOnTop !== undefined) {
-        this.window.setAlwaysOnTop(updates.settings.isAlwaysOnTop);
+    try {
+      // Update position if specified
+      if (updates.position) {
+        const x = Number(updates.position.x);
+        const y = Number(updates.position.y);
+        if (isNaN(x) || isNaN(y)) {
+          throw new Error('Invalid position values');
+        }
+        this.window.setPosition(x, y);
       }
-      if (updates.settings.opacity !== undefined) {
-        this.window.setOpacity(updates.settings.opacity);
-      }
-    }
 
-    // Update the stored config
-    this.config = { ...this.config, ...updates };
+      // Update size if specified
+      if (updates.size) {
+        const width = Number(updates.size.width);
+        const height = Number(updates.size.height);
+        if (isNaN(width) || isNaN(height) || width < 50 || height < 50) {
+          throw new Error('Invalid size values');
+        }
+        this.window.setSize(width, height);
+      }
+
+      // Update settings if specified
+      if (updates.settings) {
+        if (updates.settings.isAlwaysOnTop !== undefined) {
+          this.window.setAlwaysOnTop(Boolean(updates.settings.isAlwaysOnTop));
+        }
+        if (updates.settings.opacity !== undefined) {
+          const opacity = Number(updates.settings.opacity);
+          if (isNaN(opacity) || opacity < 0.1 || opacity > 1) {
+            throw new Error('Invalid opacity value');
+          }
+          this.window.setOpacity(opacity);
+        }
+      }
+
+      // Update the stored config with validated values
+      this.config = {
+        ...this.config,
+        ...updates,
+        position: updates.position ? {
+          x: Number(updates.position.x),
+          y: Number(updates.position.y)
+        } : this.config.position,
+        size: updates.size ? {
+          width: Number(updates.size.width),
+          height: Number(updates.size.height)
+        } : this.config.size,
+        settings: {
+          ...this.config.settings,
+          ...updates.settings,
+          isAlwaysOnTop: updates.settings?.isAlwaysOnTop !== undefined ? 
+            Boolean(updates.settings.isAlwaysOnTop) : 
+            this.config.settings?.isAlwaysOnTop,
+          opacity: updates.settings?.opacity !== undefined ? 
+            Number(updates.settings.opacity) : 
+            this.config.settings?.opacity
+        }
+      };
+    } catch (error) {
+      console.error('Error updating widget config:', error);
+      throw error;
+    }
   }
 
   public getConfig(): WidgetConfig {
     return this.config;
   }
 
-  public dispose() {
-    if (!this.window.isDestroyed()) {
-      this.window.close();
+  public dispose(): void {
+    try {
+      if (!this.window.isDestroyed()) {
+        this.window.destroy();
+      }
+    } catch (error) {
+      console.error('Error disposing widget window:', error);
     }
   }
 } 

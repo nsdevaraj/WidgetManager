@@ -42,8 +42,35 @@ export class WidgetManager {
         throw new Error(`Widget with id ${id} not found`);
       }
 
-      // Update window first
-      widgetWindow.updateConfig(updates);
+      // Validate updates before applying
+      const validatedUpdates: Partial<WidgetConfig> = {};
+
+      if (updates.position) {
+        validatedUpdates.position = {
+          x: Number(updates.position.x),
+          y: Number(updates.position.y)
+        };
+      }
+
+      if (updates.size) {
+        validatedUpdates.size = {
+          width: Math.max(50, Number(updates.size.width)),
+          height: Math.max(50, Number(updates.size.height))
+        };
+      }
+
+      if (updates.settings) {
+        validatedUpdates.settings = {
+          isAlwaysOnTop: updates.settings.isAlwaysOnTop !== undefined ? 
+            Boolean(updates.settings.isAlwaysOnTop) : undefined,
+          opacity: updates.settings.opacity !== undefined ? 
+            Math.min(1, Math.max(0.1, Number(updates.settings.opacity))) : undefined,
+          customCSS: updates.settings.customCSS
+        };
+      }
+
+      // Update window with validated values
+      widgetWindow.updateConfig(validatedUpdates);
       
       // Get the updated config from the window
       const updatedConfig = widgetWindow.getConfig();
@@ -90,7 +117,7 @@ export class WidgetManager {
   }
 
   dispose(): void {
-    // Dispose all widget windows
+    // Clean up all widget windows
     this.widgets.forEach(widget => widget.dispose());
     this.widgets.clear();
     WidgetManager.instance = null;

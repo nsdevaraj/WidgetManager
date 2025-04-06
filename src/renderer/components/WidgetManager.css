@@ -3,6 +3,8 @@
   gap: 2rem;
   height: 100%;
   position: relative;
+  background: #ffffff;
+  z-index: 1;
 }
 
 .widget-manager.loading {
@@ -84,6 +86,8 @@
   max-width: 400px;
   border-right: 1px solid var(--border-color);
   padding-right: 2rem;
+  position: relative;
+  z-index: 2;
 }
 
 .widget-list-header {
@@ -102,6 +106,9 @@
   cursor: pointer;
   font-size: 0.9rem;
   transition: background-color 0.2s;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .add-widget-button:hover:not(:disabled) {
@@ -140,6 +147,9 @@
   border-radius: 6px;
   margin-bottom: 0.5rem;
   transition: all 0.2s;
+  background: #ffffff;
+  position: relative;
+  z-index: 3;
 }
 
 .widget-item:hover {
@@ -170,6 +180,8 @@
 .widget-actions {
   display: flex;
   gap: 0.5rem;
+  position: relative;
+  z-index: 4;
 }
 
 .edit-button,
@@ -177,16 +189,20 @@
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: none;
+  background: #ffffff;
   cursor: pointer;
   font-size: 0.8rem;
   transition: all 0.2s;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .edit-button:hover:not(:disabled),
 .remove-button:hover:not(:disabled) {
   border-color: var(--primary-color);
   color: var(--primary-color);
+  background-color: var(--hover-color);
 }
 
 .edit-button:disabled,

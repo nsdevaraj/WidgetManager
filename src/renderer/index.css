@@ -1,3 +1,12 @@
+:root {
+  --primary-color: #007bff;
+  --background-color: #ffffff;
+  --text-color: #333333;
+  --border-color: #e0e0e0;
+  --chrome-bg-color: #f5f5f5;
+  --window-chrome-height: 32px;
+}
+
 /* Reset */
 * {
   margin: 0;
@@ -8,9 +17,105 @@
 /* Base styles */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background: transparent;
-  color: #333;
+  background: var(--background-color);
+  color: var(--text-color);
   overflow: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App layout */
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-color);
+  position: relative;
+}
+
+/* Window chrome */
+.window-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-app-region: drag;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 1000;
+}
+
+.window-title {
+  margin-left: 12px;
+  font-size: 13px;
+  color: #333;
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  transition: background-color 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.window-control:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.window-control.close:hover {
+  background-color: #E81123;
+  color: white;
+}
+
+/* Main content area */
+.main-content {
+  margin-top: var(--window-chrome-height);
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Widget container */
+.widget-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Settings */
+.settings-window {
+  padding: 20px;
+  background: #ffffff;
+}
+
+.settings-container {
+  margin-top: 32px;
+}
+
+/* Utility classes */
+.hidden {
+  display: none !important;
 }
 
 /* App layout */
@@ -39,10 +144,10 @@ p {
 
 .button {
   padding: 8px 16px;
-  background: #007AFF;
+  background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.2s;
@@ -52,108 +157,13 @@ p {
   background: #0056b3;
 }
 
-/* Window chrome */
-.window-chrome {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 32px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  -webkit-app-region: drag;
-  background: transparent;
-}
-
-.window-chrome-drag-region {
-  flex: 1;
-  height: 100%;
-}
-
-.window-chrome-controls {
-  display: flex;
-  height: 100%;
-  -webkit-app-region: no-drag;
-}
-
-.window-control {
-  width: 46px;
-  height: 100%;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #666;
-  transition: background-color 0.2s;
-}
-
-.window-control:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.window-control.close:hover {
-  background-color: #E81123;
-  color: white;
-}
-
-/* Utility classes */
-.hidden {
-  display: none;
-}
-
-.transparent {
-  background: transparent !important;
-}
-
-:root {
-  --primary-color: #2563eb;
-  --background-color: #f8fafc;
-  --text-color: #1e293b;
-  --border-radius: 8px;
-  --window-chrome-height: 32px;
-  --window-control-hover: rgba(0, 0, 0, 0.1);
-  --window-control-active: rgba(0, 0, 0, 0.2);
-  --close-hover: #dc2626;
-  --close-active: #b91c1c;
-  --resize-handle-size: 6px;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--background-color);
-  color: var(--text-color);
-  /* Make the window draggable from anywhere */
-  -webkit-app-region: drag;
-}
-
-/* Make interactive elements not draggable */
-button, input, select, [role="button"] {
-  -webkit-app-region: no-drag;
-}
-
-.app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-  padding-top: calc(2rem + var(--window-chrome-height));
-}
-
 /* Window Chrome Styles */
 .window-chrome {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--window-chrome-height);
+  height: 32px;
   background-color: var(--background-color);
   display: flex;
   justify-content: flex-end;
@@ -237,3 +247,8 @@ p {
 }
 
 /* Resize handles */
+
+/* Make interactive elements not draggable */
+button, input, select, [role="button"] {
+  -webkit-app-region: no-drag;
+}
