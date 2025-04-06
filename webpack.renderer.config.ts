@@ -16,9 +16,6 @@ export const rendererConfig: Configuration = {
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
   },
-  entry: {
-    renderer: './src/renderer/renderer.ts',
-  },
 };
 
 export default rendererConfig;

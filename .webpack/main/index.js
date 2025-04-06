@@ -894,83 +894,6 @@ function plural(ms, n, name) {
 
 /***/ }),
 
-/***/ "./src/main/index.ts":
-/*!***************************!*\
-  !*** ./src/main/index.ts ***!
-  \***************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const electron_1 = __webpack_require__(/*! electron */ "electron");
-const path = __importStar(__webpack_require__(/*! path */ "path"));
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electron-squirrel-startup/index.js")) {
-    electron_1.app.quit();
-}
-const createWindow = () => {
-    // Create the browser window.
-    const mainWindow = new electron_1.BrowserWindow({
-        height: 600,
-        width: 800,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-        },
-    });
-    // and load the index.html of the app.
-    if (true) {
-        mainWindow.loadURL('http://localhost:3000/main_window');
-    }
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools();
-};
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-electron_1.app.on('ready', createWindow);
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-electron_1.app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        electron_1.app.quit();
-    }
-});
-electron_1.app.on('activate', () => {
-    // On OS X it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (electron_1.BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
-});
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
-
-
-/***/ }),
-
 /***/ "child_process":
 /*!********************************!*\
   !*** external "child_process" ***!
@@ -1068,7 +991,7 @@ module.exports = require("util");
 /******/ 		};
 /******/ 	
 /******/ 		// Execute the module function
-/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -1080,13 +1003,64 @@ module.exports = require("util");
 /******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
 /******/ 	
 /************************************************************************/
-/******/ 	
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __webpack_require__("./src/main/index.ts");
-/******/ 	module.exports = __webpack_exports__;
-/******/ 	
+var __webpack_exports__ = {};
+// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
+(() => {
+"use strict";
+var exports = __webpack_exports__;
+/*!***************************!*\
+  !*** ./src/main/index.ts ***!
+  \***************************/
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const electron_1 = __webpack_require__(/*! electron */ "electron");
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (__webpack_require__(/*! electron-squirrel-startup */ "./node_modules/electron-squirrel-startup/index.js")) {
+    electron_1.app.quit();
+}
+const createWindow = () => {
+    // Create the browser window.
+    const mainWindow = new electron_1.BrowserWindow({
+        height: 600,
+        width: 800,
+        webPreferences: {
+            preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/main_window/preload.js',
+            nodeIntegration: false,
+            contextIsolation: true,
+        },
+    });
+    // and load the index.html of the app.
+    if (true) {
+        mainWindow.loadURL('http://localhost:3000/main_window');
+    }
+    // Open the DevTools.
+    mainWindow.webContents.openDevTools();
+};
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+electron_1.app.on('ready', createWindow);
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+electron_1.app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        electron_1.app.quit();
+    }
+});
+electron_1.app.on('activate', () => {
+    // On OS X it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (electron_1.BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+    }
+});
+// In this file you can include the rest of your app's specific main process
+// code. You can also put them in separate files and import them here.
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
