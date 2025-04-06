@@ -1,15 +1,40 @@
-import React, { useEffect, useState, useRef, Suspense, lazy } from 'react';
+import React, { useEffect, useState, useRef, Suspense, lazy, useCallback } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
 import { WidgetContextMenu } from './WidgetContextMenu';
 import './Widget.css';
 import { WidgetMetrics } from './WidgetMetrics';
 import '../styles/WidgetMetrics.css';
 
-// Lazy load widget components
-const ClockWidget = lazy(() => import('./widgets/ClockWidget').then(m => ({ default: m.ClockWidget })));
-const WeatherWidget = lazy(() => import('./widgets/WeatherWidget').then(m => ({ default: m.WeatherWidget })));
-const NotesWidget = lazy(() => import('./widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
-const CalendarWidget = lazy(() => import('./widgets/CalendarWidget').then(m => ({ default: m.CalendarWidget })));
+// Cache for widget content
+const contentCache = new Map<string, { content: any; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Lazy load widget components with retry mechanism
+const loadComponent = <T extends { default: React.ComponentType<any> }>(
+  importFn: () => Promise<T>,
+  retries = 3
+): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      importFn()
+        .then(resolve)
+        .catch((error) => {
+          if (retries === 0) {
+            reject(error);
+          } else {
+            setTimeout(() => attempt(), 1000);
+            retries--;
+          }
+        });
+    };
+    attempt();
+  });
+};
+
+const ClockWidget = lazy(() => loadComponent(() => import('./widgets/ClockWidget').then(m => ({ default: m.ClockWidget }))));
+const WeatherWidget = lazy(() => loadComponent(() => import('./widgets/WeatherWidget').then(m => ({ default: m.WeatherWidget }))));
+const NotesWidget = lazy(() => loadComponent(() => import('./widgets/NotesWidget').then(m => ({ default: m.NotesWidget }))));
+const CalendarWidget = lazy(() => loadComponent(() => import('./widgets/CalendarWidget').then(m => ({ default: m.CalendarWidget }))));
 
 interface WidgetProps {
   config: WidgetConfig;
@@ -36,6 +61,70 @@ export const Widget: React.FC<WidgetProps> = ({
   const currentPosition = useRef({ x: config.position.x, y: config.position.y });
   const containerRef = useRef<HTMLDivElement>(null);
   const intersectionObserver = useRef<IntersectionObserver | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadTimeout = useRef<NodeJS.Timeout>();
+  const loadAttempts = useRef(0);
+  const maxLoadAttempts = 3;
+
+  // Enhanced visibility tracking with debouncing
+  const visibilityTimeout = useRef<NodeJS.Timeout>();
+  const handleVisibilityChange = useCallback((isIntersecting: boolean) => {
+    if (visibilityTimeout.current) {
+      clearTimeout(visibilityTimeout.current);
+    }
+    
+    visibilityTimeout.current = setTimeout(() => {
+      setIsVisible(isIntersecting);
+      if (config.type === 'url' && isIntersecting) {
+        loadUrlContent();
+      }
+    }, 150); // Debounce visibility changes
+  }, [config.type]);
+
+  // Enhanced URL content loading with caching
+  const loadUrlContent = useCallback(async () => {
+    if (config.type !== 'url' || !config.settings?.initialUrl) return;
+
+    const cachedContent = contentCache.get(config.id);
+    if (cachedContent && Date.now() - cachedContent.timestamp < CACHE_DURATION) {
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadError(null);
+    loadAttempts.current++;
+
+    try {
+      // Set a loading timeout
+      loadTimeout.current = setTimeout(() => {
+        if (isLoading) {
+          throw new Error('Loading timeout');
+        }
+      }, 30000); // 30 second timeout
+
+      await window.api.createBrowserView(config.id, config.settings.initialUrl);
+      
+      contentCache.set(config.id, {
+        content: true, // BrowserView doesn't need content caching
+        timestamp: Date.now()
+      });
+
+      setIsLoading(false);
+      loadAttempts.current = 0;
+      
+      if (loadTimeout.current) {
+        clearTimeout(loadTimeout.current);
+      }
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to load content');
+      
+      if (loadAttempts.current < maxLoadAttempts) {
+        setTimeout(loadUrlContent, 2000 * loadAttempts.current); // Exponential backoff
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, [config.id, config.type, config.settings?.initialUrl]);
 
   // Set up intersection observer for visibility tracking
   useEffect(() => {
@@ -43,13 +132,7 @@ export const Widget: React.FC<WidgetProps> = ({
 
     intersectionObserver.current = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
-          setIsVisible(entry.isIntersecting);
-          if (config.type === 'url' && entry.isIntersecting) {
-            // Reload BrowserView content if it was hidden
-            window.api.createBrowserView(config.id, config.settings?.initialUrl || 'about:blank');
-          }
-        });
+        entries.forEach(entry => handleVisibilityChange(entry.isIntersecting));
       },
       { threshold: 0.1 }
     );
@@ -59,6 +142,24 @@ export const Widget: React.FC<WidgetProps> = ({
     return () => {
       if (intersectionObserver.current) {
         intersectionObserver.current.disconnect();
+      }
+      if (visibilityTimeout.current) {
+        clearTimeout(visibilityTimeout.current);
+      }
+    };
+  }, [handleVisibilityChange]);
+
+  // Cleanup resources when widget is unmounted or hidden
+  useEffect(() => {
+    return () => {
+      if (config.type === 'url') {
+        window.api.destroyBrowserView(config.id);
+      }
+      if (loadTimeout.current) {
+        clearTimeout(loadTimeout.current);
+      }
+      if (visibilityTimeout.current) {
+        clearTimeout(visibilityTimeout.current);
       }
     };
   }, [config.id, config.type]);
@@ -76,18 +177,6 @@ export const Widget: React.FC<WidgetProps> = ({
       window.api.off('widget:loading-state', handleLoadingState);
     };
   }, [config.id]);
-
-  useEffect(() => {
-    if (config.type === 'url' && containerRef.current && isVisible) {
-      // Create BrowserView when component mounts and is visible
-      window.api.createBrowserView(config.id, config.settings?.initialUrl || 'about:blank');
-
-      // Cleanup BrowserView when component unmounts or becomes invisible
-      return () => {
-        window.api.destroyBrowserView(config.id);
-      };
-    }
-  }, [config.type, config.id, isVisible]);
 
   useEffect(() => {
     if (config.type === 'url' && containerRef.current && isVisible) {
@@ -348,6 +437,7 @@ export const Widget: React.FC<WidgetProps> = ({
     return (
       <Suspense fallback={<div className="widget-loading">Loading...</div>}>
         {isLoading && <div className="widget-loading-overlay">Loading...</div>}
+        {loadError && <div className="widget-error">{loadError}</div>}
         {config.type === 'clock' && <ClockWidget />}
         {config.type === 'weather' && <WeatherWidget />}
         {config.type === 'notes' && <NotesWidget />}
