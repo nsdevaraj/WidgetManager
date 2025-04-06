@@ -363,43 +363,58 @@ textarea:disabled {
   overflow-x: auto;
 }
 
+.form-layout {
+  display: flex;
+  gap: 32px;
+  margin-top: 24px;
+}
+
+.form-column {
+  flex: 1;
+}
+
+.form-column:first-child {
+  max-width: 500px;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
   margin-top: 24px;
+  justify-content: flex-end;
 }
 
-.form-actions button {
+.cancel-button {
   padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: var(--hover-color);
+}
+
+.save-button {
+  padding: 8px 24px;
+  background: var(--primary-color);
   border: none;
   border-radius: 4px;
+  color: white;
   cursor: pointer;
-  transition: background-color 0.2s;
-  font-weight: 500;
+  transition: all 0.2s;
 }
 
-.form-actions button:first-child {
-  background-color: #3498db;
-  color: white;
-  flex: 2;
+.save-button:hover:not(:disabled) {
+  background: var(--primary-hover-color, #0056b3);
 }
 
-.form-actions button:first-child:hover {
-  background-color: #2980b9;
-}
-
-.form-actions button:last-child {
-  background-color: #95a5a6;
-  color: white;
-  flex: 1;
-}
-
-.form-actions button:last-child:hover {
-  background-color: #7f8c8d;
-}
-
-.form-actions button:disabled {
-  background-color: #bdc3c7;
+.save-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

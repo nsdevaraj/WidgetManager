@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WidgetConfig, WidgetType, defaultWidgetConfig } from '../../types/config';
+import { WidgetPreview } from './WidgetPreview';
 import './WidgetManager.css';
 
 interface WidgetFormData {
@@ -362,158 +363,165 @@ export const WidgetManager: React.FC = () => {
             </div>
           )}
 
-          <div className="form-group">
-            <label>Size:</label>
-            <div className="size-inputs">
-              <input
-                type="number"
-                min="50"
-                max="2000"
-                value={formData.size.width}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  size: { ...formData.size, width: Number(e.target.value) }
-                })}
-                disabled={isLoading}
-              />
-              <span>×</span>
-              <input
-                type="number"
-                min="50"
-                max="2000"
-                value={formData.size.height}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  size: { ...formData.size, height: Number(e.target.value) }
-                })}
-                disabled={isLoading}
-              />
-            </div>
-            <span className="help-text">Minimum size: 50×50 pixels</span>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.settings.isAlwaysOnTop}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  settings: { ...formData.settings, isAlwaysOnTop: e.target.checked }
-                })}
-                disabled={isLoading}
-              />
-              Always on Top
-            </label>
-            <span className="help-text">Keep widget above other windows</span>
-          </div>
-
-          <div className="form-group">
-            <label>Opacity:</label>
-            <div className="opacity-control">
-              <input
-                type="range"
-                min="0.1"
-                max="1"
-                step="0.1"
-                value={formData.settings.opacity}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  settings: { ...formData.settings, opacity: Number(e.target.value) }
-                })}
-                disabled={isLoading}
-              />
-              <span>{(formData.settings.opacity * 100).toFixed(0)}%</span>
-            </div>
-            <span className="help-text">Adjust widget transparency</span>
-          </div>
-
-          {formData.type === 'url' && (
-            <div className="form-group">
-              <label>Initial URL:</label>
-              <div className="url-input-container">
-                <input
-                  type="url"
-                  value={formData.settings.initialUrl || ''}
-                  onChange={(e) => {
-                    const url = e.target.value;
-                    setFormData({
+          <div className="form-layout">
+            <div className="form-column">
+              <div className="form-group">
+                <label>Size:</label>
+                <div className="size-inputs">
+                  <input
+                    type="number"
+                    min="50"
+                    max="2000"
+                    value={formData.size.width}
+                    onChange={(e) => setFormData({
                       ...formData,
-                      settings: { ...formData.settings, initialUrl: url }
-                    });
-                    // Clear error if URL becomes valid
-                    if (validateUrl(url) && error?.includes('URL')) {
-                      setError(null);
-                    }
-                  }}
-                  placeholder="Enter URL (e.g., https://google.com)"
-                  disabled={isLoading}
-                  className={error?.includes('URL') ? 'error' : ''}
-                />
-                {formData.settings.initialUrl && (
-                  <button
-                    className="preview-button"
-                    onClick={() => {
-                      if (validateUrl(formData.settings.initialUrl!)) {
-                        window.open(formData.settings.initialUrl, '_blank', 'width=800,height=600');
-                      } else {
-                        setError('Please enter a valid URL before previewing');
-                      }
-                    }}
-                    disabled={isLoading || !validateUrl(formData.settings.initialUrl)}
-                  >
-                    Preview
-                  </button>
-                )}
+                      size: { ...formData.size, width: Number(e.target.value) }
+                    })}
+                    disabled={isLoading}
+                  />
+                  <span>×</span>
+                  <input
+                    type="number"
+                    min="50"
+                    max="2000"
+                    value={formData.size.height}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      size: { ...formData.size, height: Number(e.target.value) }
+                    })}
+                    disabled={isLoading}
+                  />
+                </div>
+                <span className="help-text">Minimum size: 50×50 pixels</span>
               </div>
-              <span className="help-text">
-                {error?.includes('URL') ? (
-                  <span className="error-text">{error}</span>
-                ) : (
-                  'The webpage to display in the widget'
-                )}
-              </span>
-            </div>
-          )}
 
-          <div className="form-group">
-            <label>Custom CSS:</label>
-            <textarea
-              value={formData.settings.customCSS}
-              onChange={(e) => setFormData({
-                ...formData,
-                settings: { ...formData.settings, customCSS: e.target.value }
-              })}
-              placeholder="Enter custom CSS as a JSON object..."
-              disabled={isLoading}
-            />
-            <div className="help-text">
-              <p>Custom styles in JSON format. Example:</p>
-              <pre>{`{
-  "backgroundColor": "#f0f0f0",
-  "borderRadius": "8px",
-  "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"
-}`}</pre>
-            </div>
-          </div>
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={formData.settings.isAlwaysOnTop}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, isAlwaysOnTop: e.target.checked }
+                    })}
+                    disabled={isLoading}
+                  />
+                  Always on Top
+                </label>
+                <span className="help-text">Keep widget above other windows</span>
+              </div>
 
-          <div className="form-actions">
-            <button
-              onClick={() => selectedWidget ? handleUpdateWidget(selectedWidget) : handleAddWidget()}
-              disabled={isLoading}
-            >
-              {selectedWidget ? 'Update Widget' : 'Add Widget'}
-            </button>
-            <button
-              onClick={() => {
-                setIsEditing(false);
-                setSelectedWidget(null);
-                setError(null);
-              }}
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
+              <div className="form-group">
+                <label>Opacity:</label>
+                <div className="opacity-control">
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                    value={formData.settings.opacity}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, opacity: Number(e.target.value) }
+                    })}
+                    disabled={isLoading}
+                  />
+                  <span>{(formData.settings.opacity * 100).toFixed(0)}%</span>
+                </div>
+                <span className="help-text">Adjust widget transparency</span>
+              </div>
+
+              {formData.type === 'url' && (
+                <div className="form-group">
+                  <label>Initial URL:</label>
+                  <div className="url-input-container">
+                    <input
+                      type="url"
+                      value={formData.settings.initialUrl || ''}
+                      onChange={(e) => {
+                        const url = e.target.value;
+                        setFormData({
+                          ...formData,
+                          settings: { ...formData.settings, initialUrl: url }
+                        });
+                        // Clear error if URL becomes valid
+                        if (validateUrl(url) && error?.includes('URL')) {
+                          setError(null);
+                        }
+                      }}
+                      placeholder="Enter URL (e.g., https://google.com)"
+                      disabled={isLoading}
+                      className={error?.includes('URL') ? 'error' : ''}
+                    />
+                    {formData.settings.initialUrl && (
+                      <button
+                        className="preview-button"
+                        onClick={() => {
+                          if (validateUrl(formData.settings.initialUrl!)) {
+                            window.open(formData.settings.initialUrl, '_blank', 'width=800,height=600');
+                          } else {
+                            setError('Please enter a valid URL before previewing');
+                          }
+                        }}
+                        disabled={isLoading || !validateUrl(formData.settings.initialUrl)}
+                      >
+                        Preview in Browser
+                      </button>
+                    )}
+                  </div>
+                  <span className="help-text">
+                    {error?.includes('URL') ? (
+                      <span className="error-text">{error}</span>
+                    ) : (
+                      'The webpage to display in the widget'
+                    )}
+                  </span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Custom CSS:</label>
+                <textarea
+                  value={formData.settings.customCSS}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    settings: { ...formData.settings, customCSS: e.target.value }
+                  })}
+                  placeholder="Enter custom CSS as JSON object"
+                  disabled={isLoading}
+                />
+                <span className="help-text">Optional: Customize widget appearance with CSS properties in JSON format</span>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="cancel-button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setSelectedWidget(null);
+                    setError(null);
+                  }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="save-button"
+                  onClick={() => selectedWidget ? handleUpdateWidget(selectedWidget) : handleAddWidget()}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving...' : selectedWidget ? 'Update Widget' : 'Add Widget'}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-column">
+              <WidgetPreview
+                type={formData.type}
+                size={formData.size}
+                settings={formData.settings}
+              />
+            </div>
           </div>
         </div>
       )}
