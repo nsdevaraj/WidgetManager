@@ -1,6 +1,12 @@
 import { AppSettings, WidgetConfig, WidgetResourceMetrics } from './config';
 import { IpcRendererEvent } from 'electron';
 
+export interface UpdateInfo {
+  version: string;
+  releaseDate?: string;
+  releaseNotes?: string;
+}
+
 export interface Screen {
   id: number;
   bounds: {
@@ -19,11 +25,19 @@ export interface Screen {
   isPrimary: boolean;
 }
 
-export interface IElectronAPI {
+export interface ElectronAPI {
   // Settings management
   getSettings: () => Promise<AppSettings>;
   updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
   resetSettings: () => Promise<AppSettings>;
+
+  // Update management
+  checkForUpdates: () => Promise<void>;
+  downloadUpdate: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+  onUpdateAvailable: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => void;
+  onUpdateDownloaded: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => void;
+  onUpdaterMessage: (callback: (event: IpcRendererEvent, message: any) => void) => void;
 
   // Event handling
   on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;

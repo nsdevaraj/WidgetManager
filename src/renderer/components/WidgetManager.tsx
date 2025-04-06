@@ -422,7 +422,7 @@ export const WidgetManager: React.FC = () => {
         const settings = await window.api.getSettings();
         if (settings.widgetGroups) {
           // Ensure all required properties are present
-          const validGroups = settings.widgetGroups.filter((group): group is WidgetGroup => {
+          const validGroups = settings.widgetGroups.filter((group: { id: string; name: string; widgetIds: string[]; isVisible: boolean; createdAt: number; updatedAt: number }): group is WidgetGroup => {
             return (
               typeof group.id === 'string' &&
               typeof group.name === 'string' &&

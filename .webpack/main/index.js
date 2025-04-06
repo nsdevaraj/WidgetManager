@@ -124693,34 +124693,18 @@ const store = new electron_store_1.default({
         widgets: [],
         settings: config_1.defaultAppSettings
     },
-    beforeEach: (options) => {
-        // Validate data before saving
-        if (options.type === 'set') {
-            try {
-                if (options.key === 'widgets') {
-                    options.value.forEach(config_1.validateWidgetConfig);
-                }
-                else if (options.key === 'settings') {
-                    (0, config_1.validateAppSettings)(options.value);
-                }
-            }
-            catch (error) {
-                console.error('Validation error:', error);
-                throw error;
-            }
-        }
-    },
+    watch: true,
     migrations: {
         // Example migration for future schema changes
-        '>=1.0.0': (migrateStore) => {
+        '>=1.0.0': (store) => {
             try {
-                const data = migrateStore.store;
+                const data = store.store;
                 (0, config_1.validateStoreSchema)(data);
             }
             catch (error) {
                 console.error('Migration validation error:', error);
                 // Reset to defaults if validation fails
-                migrateStore.clear();
+                store.clear();
             }
         }
     }

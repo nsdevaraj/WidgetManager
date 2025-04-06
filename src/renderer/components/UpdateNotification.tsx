@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { UpdateInfo } from '../types/electron';
+import { UpdateInfo, ElectronAPI } from '../types/electron';
 
 declare global {
   interface Window {
-    electron: {
-      checkForUpdates: () => Promise<void>;
-      downloadUpdate: () => Promise<void>;
-      quitAndInstall: () => Promise<void>;
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
-      onUpdaterMessage: (callback: (event: any, message: any) => void) => void;
-    };
+    electron: ElectronAPI;
   }
 }
 

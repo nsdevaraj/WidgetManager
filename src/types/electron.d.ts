@@ -1,6 +1,11 @@
 import { WidgetConfig, AppSettings, WidgetResourceMetrics } from './config';
 import { IpcRendererEvent } from 'electron';
 
+export interface UpdateInfo {
+  version: string;
+  [key: string]: any;
+}
+
 export interface Screen {
   id: number;
   bounds: {
@@ -26,11 +31,19 @@ export interface Bounds {
   height: number;
 }
 
-export interface IElectronAPI {
+export interface ElectronAPI {
   // Settings management
   getSettings: () => Promise<AppSettings>;
   updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
   resetSettings: () => Promise<AppSettings>;
+
+  // Update management
+  checkForUpdates: () => Promise<void>;
+  downloadUpdate: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+  onUpdateAvailable: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => () => void;
+  onUpdateDownloaded: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => () => void;
+  onUpdaterMessage: (callback: (event: IpcRendererEvent, message: any) => void) => () => void;
 
   // Event handling
   on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => void;
@@ -43,24 +56,24 @@ export interface IElectronAPI {
   updateWidget: (id: string, updates: Partial<WidgetConfig>) => Promise<WidgetConfig>;
   deleteWidget: (id: string) => Promise<void>;
 
+  // Window management
+  onStartDrag: () => void;
+  onMouseMove: (x: number, y: number) => void;
+  onMouseUp: () => void;
+  minimize: () => Promise<void>;
+  maximize: () => Promise<void>;
+  close: () => Promise<void>;
+  restore: () => Promise<void>;
+  getPosition: () => Promise<{ x: number; y: number }>;
+  setPosition: (x: number, y: number) => Promise<void>;
+
   // Screen management
   getScreens: () => Promise<Screen[]>;
   getPrimaryScreen: () => Promise<Screen>;
   getCurrentScreen: () => Promise<Screen>;
 
-  // Window management
-  getPosition: () => Promise<{ x: number; y: number }>;
-  setPosition: (x: number, y: number) => Promise<void>;
-  minimize: () => Promise<void>;
-  maximize: () => Promise<void>;
-  restore: () => Promise<void>;
-  close: () => Promise<void>;
-
   // Window drag and resize events
-  onStartDrag: () => void;
   onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => void;
-  onMouseMove: (x: number, y: number) => void;
-  onMouseUp: () => void;
 
   // BrowserView management
   createBrowserView: (id: string, url: string) => void;
@@ -75,7 +88,7 @@ export interface IElectronAPI {
 
 declare global {
   interface Window {
-    api: IElectronAPI;
+    api: ElectronAPI;
   }
 }
 

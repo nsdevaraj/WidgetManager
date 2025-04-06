@@ -1,5 +1,6 @@
 import Store from 'electron-store';
 import { app } from 'electron';
+import { EventEmitter } from 'events';
 import {
   StoreSchema,
   WidgetConfig,
@@ -15,16 +16,6 @@ interface StoreOptions {
   type: 'set' | 'get';
   key: keyof StoreSchema;
   value?: unknown;
-}
-
-// Extend Store type to include the methods we need
-interface TypedStore extends Store<StoreSchema> {
-  get<K extends keyof StoreSchema>(key: K): StoreSchema[K];
-  get<K extends keyof StoreSchema>(key: K, defaultValue: StoreSchema[K]): StoreSchema[K];
-  set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void;
-  onDidAnyChange(callback: (newValue: StoreSchema) => void): () => void;
-  clear(): void;
-  store: StoreSchema;
 }
 
 // Validation functions
@@ -70,35 +61,21 @@ const store = new Store<StoreSchema>({
     widgets: [],
     settings: defaultAppSettings
   },
-  beforeEach: (options: StoreOptions) => {
-    // Validate data before saving
-    if (options.type === 'set') {
-      try {
-        if (options.key === 'widgets') {
-          (options.value as WidgetConfig[]).forEach(validateWidgetConfig);
-        } else if (options.key === 'settings') {
-          validateAppSettings(options.value);
-        }
-      } catch (error) {
-        console.error('Validation error:', error);
-        throw error;
-      }
-    }
-  },
+  watch: true,
   migrations: {
     // Example migration for future schema changes
-    '>=1.0.0': (migrateStore: TypedStore) => {
+    '>=1.0.0': (store: Store<StoreSchema>) => {
       try {
-        const data = migrateStore.store;
+        const data = store.store;
         validateStoreSchema(data);
       } catch (error) {
         console.error('Migration validation error:', error);
         // Reset to defaults if validation fails
-        migrateStore.clear();
+        store.clear();
       }
     }
   }
-}) as TypedStore;
+});
 
 // Helper functions for store operations
 export const storeHelpers = {

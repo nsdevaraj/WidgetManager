@@ -5,7 +5,7 @@ import { WidgetManager } from './WidgetManager';
 import { PreferencesForm } from './PreferencesForm';
 import { ResourceManagementForm } from './ResourceManagementForm';
 import { AppSettings, defaultAppSettings } from '../../types/config';
-import { IElectronAPI } from '../../types/electron';
+import { ElectronAPI } from '../../types/electron';
 
 type SettingsTab = 'widgets' | 'preferences' | 'resources';
 
@@ -21,7 +21,7 @@ const ErrorNotification: React.FC<ErrorNotificationProps> = ({ message, onDismis
   </div>
 );
 
-function isElectronAPI(api: any): api is IElectronAPI {
+function isElectronAPI(api: any): api is ElectronAPI {
   return api && 
     typeof api.invoke === 'function' && 
     typeof api.on === 'function' && 

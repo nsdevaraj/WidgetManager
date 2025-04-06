@@ -1,9 +1,9 @@
-import { IElectronAPI } from '../types/electron';
+import { ElectronAPI } from '../types/electron';
 import { WidgetConfig } from '../types/config';
 
 declare global {
   interface Window {
-    api: IElectronAPI;
+    api: ElectronAPI;
     widgetConfig: WidgetConfig;
   }
 } 

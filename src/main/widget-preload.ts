@@ -1,9 +1,9 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import { IElectronAPI } from '../types/electron';
-import { AppSettings, WidgetResourceMetrics } from '../types/config';
+import { ElectronAPI, UpdateInfo } from '../types/electron';
+import { AppSettings, WidgetConfig, WidgetResourceMetrics } from '../types/config';
 
 // Create the API object for widget windows
-const api: IElectronAPI = {
+const api: ElectronAPI = {
   // Settings management
   getSettings: async () => {
     return await ipcRenderer.invoke('settings:get');
@@ -15,11 +15,28 @@ const api: IElectronAPI = {
     return await ipcRenderer.invoke('settings:reset');
   },
 
-  // Event handling
-  on: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+  // Update management
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  quitAndInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateAvailable: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => {
+    ipcRenderer.on('update:available', callback);
+    return () => ipcRenderer.removeListener('update:available', callback);
   },
-  off: (channel: string, callback: (...args: any[]) => void) => {
+  onUpdateDownloaded: (callback: (event: IpcRendererEvent, info: UpdateInfo) => void) => {
+    ipcRenderer.on('update:downloaded', callback);
+    return () => ipcRenderer.removeListener('update:downloaded', callback);
+  },
+  onUpdaterMessage: (callback: (event: IpcRendererEvent, message: any) => void) => {
+    ipcRenderer.on('update:message', callback);
+    return () => ipcRenderer.removeListener('update:message', callback);
+  },
+
+  // Event handling
+  on: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {
+    ipcRenderer.on(channel, callback);
+  },
+  off: (channel: string, callback: (event: IpcRendererEvent, ...args: any[]) => void) => {
     ipcRenderer.removeListener(channel, callback);
   },
   invoke: async (channel: string, ...args: any[]) => {
@@ -28,20 +45,20 @@ const api: IElectronAPI = {
 
   // Widget management
   listWidgets: () => ipcRenderer.invoke('widget:list'),
-  addWidget: (config) => ipcRenderer.invoke('widget:add', config),
-  updateWidget: (id, updates) => ipcRenderer.invoke('widget:update', { id, updates }),
-  deleteWidget: (id) => ipcRenderer.invoke('widget:delete', id),
+  addWidget: (config: Partial<WidgetConfig>) => ipcRenderer.invoke('widget:add', config),
+  updateWidget: (id: string, updates: Partial<WidgetConfig>) => ipcRenderer.invoke('widget:update', { id, updates }),
+  deleteWidget: (id: string) => ipcRenderer.invoke('widget:delete', id),
   
   // Window management
   onStartDrag: () => ipcRenderer.send('window:start-drag'),
-  onMouseMove: (x: number, y: number) => ipcRenderer.send('window:mouse-move', { x, y }),
+  onMouseMove: (x: number, y: number) => ipcRenderer.send('window:mouse-move', x, y),
   onMouseUp: () => ipcRenderer.send('window:mouse-up'),
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   restore: () => ipcRenderer.invoke('window:restore'),
   getPosition: () => ipcRenderer.invoke('window:get-position'),
-  setPosition: (x, y) => ipcRenderer.invoke('window:set-position', x, y),
+  setPosition: (x: number, y: number) => ipcRenderer.invoke('window:set-position', x, y),
 
   // Screen management
   getScreens: () => ipcRenderer.invoke('screen:get-all'),
@@ -54,26 +71,28 @@ const api: IElectronAPI = {
   },
 
   // BrowserView management
-  createBrowserView: (id: string, url: string) => 
-    ipcRenderer.send('browserView:create', { id, url }),
-  destroyBrowserView: (id: string) => 
-    ipcRenderer.send('browserView:destroy', id),
-  setBrowserViewBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) => 
-    ipcRenderer.send('browserView:setBounds', { id, bounds }),
-
-  // Resource monitoring
-  getWidgetMetrics: async (widgetId: string): Promise<WidgetResourceMetrics | null> => {
-    return await ipcRenderer.invoke(`widget:${widgetId}:get-metrics`);
+  createBrowserView: (id: string, url: string) => {
+    ipcRenderer.send('browser-view:create', { id, url });
+  },
+  destroyBrowserView: (id: string) => {
+    ipcRenderer.send('browser-view:destroy', id);
+  },
+  setBrowserViewBounds: (id: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    ipcRenderer.send('browser-view:set-bounds', { id, bounds });
   },
 
+  // Resource monitoring
+  getWidgetMetrics: (widgetId: string) => ipcRenderer.invoke('widget:get-metrics', widgetId),
   onMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => {
     ipcRenderer.on('widget:metrics-update', callback);
   },
-
   offMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => {
     ipcRenderer.removeListener('widget:metrics-update', callback);
-  },
+  }
 };
+
+// Expose the API to the renderer process
+contextBridge.exposeInMainWorld('electron', api);
 
 // Initialize widget configuration
 (async () => {
