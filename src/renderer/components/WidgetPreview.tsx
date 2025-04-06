@@ -54,19 +54,13 @@ const getWidgetPreviewContent = (type: WidgetType, settings: WidgetPreviewProps[
     case 'url':
       return (
         <div className="url-preview">
-          {settings.initialUrl ? (
-            <iframe
-              src={settings.initialUrl}
-              title="URL Widget Preview"
-              sandbox="allow-same-origin allow-scripts"
-              style={{ width: '100%', height: '100%', border: 'none' }}
-            />
-          ) : (
-            <div className="url-placeholder">
-              <span>🌐</span>
-              <span>Enter a URL to preview</span>
-            </div>
-          )}
+          <div className="url-placeholder">
+            <span>🌐</span>
+            <span>URL widgets can only be previewed when launched</span>
+            {settings.initialUrl && (
+              <span className="url-preview-target">Target: {settings.initialUrl}</span>
+            )}
+          </div>
         </div>
       );
     default:

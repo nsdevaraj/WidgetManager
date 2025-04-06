@@ -137,12 +137,23 @@
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
+  padding: 20px;
+  text-align: center;
 }
 
 .url-placeholder span:first-child {
   font-size: 32px;
 }
 
-.url-placeholder span:last-child {
+.url-placeholder span:not(:first-child) {
   font-size: 14px;
+}
+
+.url-preview-target {
+  font-family: monospace;
+  background: var(--bg-secondary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  word-break: break-all;
+  max-width: 100%;
 } 
