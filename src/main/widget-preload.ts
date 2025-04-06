@@ -1,8 +1,31 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IElectronAPI } from '../types/electron';
+import { AppSettings } from '../types/config';
 
 // Create the API object for widget windows
 const api: IElectronAPI = {
+  // Settings management
+  getSettings: async () => {
+    return await ipcRenderer.invoke('settings:get');
+  },
+  updateSettings: async (settings: Partial<AppSettings>) => {
+    return await ipcRenderer.invoke('settings:update', settings);
+  },
+  resetSettings: async () => {
+    return await ipcRenderer.invoke('settings:reset');
+  },
+
+  // Event handling
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+  },
+  off: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.removeListener(channel, callback);
+  },
+  invoke: async (channel: string, ...args: any[]) => {
+    return await ipcRenderer.invoke(channel, ...args);
+  },
+
   // Widget management
   listWidgets: () => ipcRenderer.invoke('widget:list'),
   addWidget: (config) => ipcRenderer.invoke('widget:add', config),
@@ -16,14 +39,19 @@ const api: IElectronAPI = {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
+  restore: () => ipcRenderer.invoke('window:restore'),
+  getPosition: () => ipcRenderer.invoke('window:get-position'),
+  setPosition: (x, y) => ipcRenderer.invoke('window:set-position', x, y),
 
   // Screen management
   getScreens: () => ipcRenderer.invoke('screen:get-all'),
   getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),
   getCurrentScreen: () => ipcRenderer.invoke('screen:get-current'),
-  getPosition: () => ipcRenderer.invoke('window:get-position'),
-  setPosition: (x, y) => ipcRenderer.invoke('window:set-position', x, y),
-  restore: () => ipcRenderer.invoke('window:restore'),
+
+  // Window drag and resize events
+  onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => {
+    ipcRenderer.send('window:start-resize', direction);
+  },
 
   // BrowserView management
   createBrowserView: (id: string, url: string) => 

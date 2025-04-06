@@ -93,10 +93,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      if (!window.electron) {
+      if (!window.api) {
         throw new Error('Electron API not available');
       }
-      const loadedWidgets = await window.electron.invoke('widget:list') as WidgetConfig[];
+      const loadedWidgets = await window.api.listWidgets();
       setWidgets(loadedWidgets);
     } catch (error) {
       console.error('Failed to load widgets:', error);
@@ -151,10 +151,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      if (!window.electron) {
+      if (!window.api) {
         throw new Error('Electron API not available');
       }
-      const newWidget = await window.electron.invoke('widget:add', {
+      const newWidget = await window.api.addWidget({
         type: formData.type,
         position: { x: 0, y: 0 }, // Default position
         size: formData.size,
@@ -186,19 +186,16 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      if (!window.electron) {
+      if (!window.api) {
         throw new Error('Electron API not available');
       }
-      const updatedWidget = await window.electron.invoke('widget:update', {
-        id,
-        updates: {
-          size: formData.size,
-          settings: {
-            isAlwaysOnTop: formData.settings.isAlwaysOnTop,
-            opacity: formData.settings.opacity,
-            customCSS: formData.settings.customCSS,
-            ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
-          }
+      const updatedWidget = await window.api.updateWidget(id, {
+        size: formData.size,
+        settings: {
+          isAlwaysOnTop: formData.settings.isAlwaysOnTop,
+          opacity: formData.settings.opacity,
+          customCSS: formData.settings.customCSS,
+          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
         }
       });
       const updatedWidgets = widgets.map(w => 
@@ -220,10 +217,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      if (!window.electron) {
+      if (!window.api) {
         throw new Error('Electron API not available');
       }
-      await window.electron.invoke('widget:delete', id);
+      await window.api.deleteWidget(id);
       setWidgets(widgets.filter(w => w.id !== id));
       if (selectedWidget === id) {
         setSelectedWidget(null);

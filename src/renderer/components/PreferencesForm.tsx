@@ -13,6 +13,7 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
 }) => {
   const [settings, setSettings] = useState<AppSettings>(initialSettings);
   const [isDirty, setIsDirty] = useState(false);
+  const [showGridPreview, setShowGridPreview] = useState(false);
 
   useEffect(() => {
     setSettings(initialSettings);
@@ -51,6 +52,79 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
     onSettingsChange(defaultAppSettings);
   };
 
+  const handleExportConfig = async () => {
+    try {
+      if (!window.api) {
+        throw new Error('Electron API not available');
+      }
+      const config = await window.api.getSettings();
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'widget-config.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export config:', error);
+      // You might want to show this error in the UI
+    }
+  };
+
+  const handleImportConfig = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          if (!window.api) {
+            throw new Error('Electron API not available');
+          }
+          const config = JSON.parse(e.target?.result as string);
+          await window.api.updateSettings(config);
+          // Reload settings after import
+          const newSettings = await window.api.getSettings();
+          setSettings(newSettings);
+          onSettingsChange(newSettings);
+        } catch (error) {
+          console.error('Failed to import config:', error);
+          // You might want to show this error in the UI
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('Failed to read config file:', error);
+      // You might want to show this error in the UI
+    }
+  };
+
+  const GridPreview: React.FC = () => (
+    <div className="grid-preview" style={{ display: showGridPreview ? 'block' : 'none' }}>
+      <div className="grid-container">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="grid-row">
+            {Array.from({ length: 6 }, (_, j) => (
+              <div key={j} className="grid-cell">
+                {i === 2 && j === 2 && (
+                  <div className="widget-preview" style={{ opacity: settings.gridSnapping ? 1 : 0.5 }}>
+                    Widget
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="grid-preview-label">
+        Grid snapping {settings.gridSnapping ? 'enabled' : 'disabled'}
+      </div>
+    </div>
+  );
+
   return (
     <div className="preferences-form">
       <div className="form-section">
@@ -88,7 +162,10 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
             onChange={(e) => handleSizeChange('height', parseInt(e.target.value, 10))}
           />
         </div>
-        <div className="form-group">
+        <div className="form-group grid-snap-group"
+          onMouseEnter={() => setShowGridPreview(true)}
+          onMouseLeave={() => setShowGridPreview(false)}
+        >
           <label>
             <input
               type="checkbox"
@@ -97,6 +174,7 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
             />
             Enable Grid Snapping
           </label>
+          <GridPreview />
         </div>
       </div>
 
@@ -121,6 +199,31 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
             />
             Start at Login
           </label>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h3>Configuration</h3>
+        <div className="form-group">
+          <button
+            className="export-button"
+            onClick={handleExportConfig}
+            type="button"
+          >
+            Export Configuration
+          </button>
+          <div className="import-container">
+            <label htmlFor="import-config" className="import-button">
+              Import Configuration
+            </label>
+            <input
+              id="import-config"
+              type="file"
+              accept=".json"
+              onChange={handleImportConfig}
+              style={{ display: 'none' }}
+            />
+          </div>
         </div>
       </div>
 

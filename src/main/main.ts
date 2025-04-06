@@ -26,25 +26,28 @@ let ipcHandlersInitialized = false;
 export const createWindow = (): BrowserWindow => {
   // Set up Content Security Policy
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const isDev = process.env.NODE_ENV === 'development';
-    
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self';",
-          // In development, allow eval for webpack hot reloading
-          isDev 
-            ? "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
-            : "script-src 'self';",
-          "style-src 'self' 'unsafe-inline';",
-          // In development, allow connection to webpack dev server
-          isDev
-            ? "connect-src 'self' ws: http: https:;"
-            : "connect-src 'self';",
-          "img-src 'self' data: https:;",
-          "font-src 'self' data:;",
-        ].join(' ')
+          "default-src 'self'",
+          // Allow scripts from our origin and inline scripts (needed for webpack)
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          // Allow styles from our origin and inline styles
+          "style-src 'self' 'unsafe-inline'",
+          // Allow images from our origin and data URLs
+          "img-src 'self' data: https:",
+          // Allow fonts from our origin and data URLs
+          "font-src 'self' data:",
+          // Allow connections to our origin and websocket (needed for hot reload)
+          "connect-src 'self' ws: localhost:* http://localhost:*",
+          // Prevent all object/embed/media content
+          "object-src 'none'",
+          "media-src 'none'",
+          // Frame restrictions
+          "frame-src 'none'",
+          "child-src 'none'"
+        ].join('; ')
       }
     });
   });
@@ -53,13 +56,13 @@ export const createWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
     height: 600,
     width: 800,
-    frame: true, // Enable window frame for better interaction
-    transparent: true, // Disable transparency for better interaction
+    frame: true,
+    transparent: true,
     webPreferences: {
-      nodeIntegration: false, // Disable node integration for security
-      contextIsolation: true, // Enable context isolation
-      sandbox: true, // Enable sandboxing
-      webviewTag: false, // Disable webview tag for security
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webviewTag: false,
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       // Additional security settings
       allowRunningInsecureContent: false,
@@ -71,7 +74,7 @@ export const createWindow = (): BrowserWindow => {
     // Enable window to be shown only when ready
     show: false,
     // Add window styling
-    backgroundColor: '#ffffff', // Set background color
+    backgroundColor: '#ffffff',
     titleBarStyle: 'hidden', // Hide title bar but keep window controls
   });
 
@@ -102,7 +105,7 @@ export const createWindow = (): BrowserWindow => {
     console.error('Failed to load app:', err);
   });
 
-  // Disable DevTools in production
+  // Open DevTools in development
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
@@ -110,9 +113,7 @@ export const createWindow = (): BrowserWindow => {
   return mainWindow;
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
+// This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
   try {
     // Initialize managers
@@ -131,10 +132,12 @@ app.whenReady().then(async () => {
     app.quit();
   }
 
-  app.on('activate', function () {
+  app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
 
@@ -150,9 +153,7 @@ app.on('before-quit', () => {
   }
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

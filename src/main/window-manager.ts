@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron';
-import { WindowPosition, WindowSize } from '../types/window';
+import { WindowPosition, WindowSize } from '../types/window-types';
 
 export class WindowManager {
   private window: BrowserWindow | null = null;

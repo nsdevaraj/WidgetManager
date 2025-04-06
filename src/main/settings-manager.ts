@@ -1,6 +1,6 @@
 import { AppSettings, defaultAppSettings, validateAppSettings } from '../types/config';
 import { store } from './store';
-import { app } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 
 export class SettingsManager {
   private static instance: SettingsManager | null = null;
@@ -52,9 +52,26 @@ export class SettingsManager {
     try {
       // Apply theme
       if (settings.theme !== 'system') {
-        // TODO: Implement theme switching
-        // For now, just log that we would change the theme
-        console.log('Would switch theme to:', settings.theme);
+        // Send theme to all windows
+        const allWindows = BrowserWindow.getAllWindows();
+        allWindows.forEach(window => {
+          window.webContents.send('theme:changed', settings.theme);
+        });
+      } else {
+        // Use system theme
+        const isDark = nativeTheme.shouldUseDarkColors;
+        const allWindows = BrowserWindow.getAllWindows();
+        allWindows.forEach(window => {
+          window.webContents.send('theme:changed', isDark ? 'dark' : 'light');
+        });
+        
+        // Listen for system theme changes
+        nativeTheme.on('updated', () => {
+          const isDark = nativeTheme.shouldUseDarkColors;
+          allWindows.forEach(window => {
+            window.webContents.send('theme:changed', isDark ? 'dark' : 'light');
+          });
+        });
       }
 
       // Apply startup behavior

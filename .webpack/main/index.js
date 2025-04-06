@@ -18643,22 +18643,26 @@ let ipcHandlersInitialized = false;
 const createWindow = () => {
     // Set up Content Security Policy
     electron_1.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        const isDev = "development" === 'development';
         callback({
             responseHeaders: Object.assign(Object.assign({}, details.responseHeaders), { 'Content-Security-Policy': [
-                    "default-src 'self';",
-                    // In development, allow eval for webpack hot reloading
-                    isDev
-                        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
-                        : "script-src 'self';",
-                    "style-src 'self' 'unsafe-inline';",
-                    // In development, allow connection to webpack dev server
-                    isDev
-                        ? "connect-src 'self' ws: http: https:;"
-                        : "connect-src 'self';",
-                    "img-src 'self' data: https:;",
-                    "font-src 'self' data:;",
-                ].join(' ') })
+                    "default-src 'self'",
+                    // Allow scripts from our origin and inline scripts (needed for webpack)
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+                    // Allow styles from our origin and inline styles
+                    "style-src 'self' 'unsafe-inline'",
+                    // Allow images from our origin and data URLs
+                    "img-src 'self' data: https:",
+                    // Allow fonts from our origin and data URLs
+                    "font-src 'self' data:",
+                    // Allow connections to our origin and websocket (needed for hot reload)
+                    "connect-src 'self' ws: localhost:* http://localhost:*",
+                    // Prevent all object/embed/media content
+                    "object-src 'none'",
+                    "media-src 'none'",
+                    // Frame restrictions
+                    "frame-src 'none'",
+                    "child-src 'none'"
+                ].join('; ') })
         });
     });
     // Create the browser window.
@@ -18709,16 +18713,14 @@ const createWindow = () => {
     mainWindow.loadURL('http://localhost:3000/main_window').catch(err => {
         console.error('Failed to load app:', err);
     });
-    // Disable DevTools in production
+    // Open DevTools in development
     if (true) {
         mainWindow.webContents.openDevTools();
     }
     return mainWindow;
 };
 exports.createWindow = createWindow;
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
+// This method will be called when Electron has finished initialization
 electron_1.app.whenReady().then(() => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Initialize managers
@@ -18735,11 +18737,12 @@ electron_1.app.whenReady().then(() => __awaiter(void 0, void 0, void 0, function
         console.error('Failed to initialize application:', error);
         electron_1.app.quit();
     }
-    electron_1.app.on('activate', function () {
+    electron_1.app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
-        if (electron_1.BrowserWindow.getAllWindows().length === 0)
+        if (electron_1.BrowserWindow.getAllWindows().length === 0) {
             (0, exports.createWindow)();
+        }
     });
 }));
 // Clean up application-level managers when quitting
@@ -18753,9 +18756,7 @@ electron_1.app.on('before-quit', () => {
         settingsManager = null;
     }
 });
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Quit when all windows are closed, except on macOS
 electron_1.app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         electron_1.app.quit();
@@ -18929,9 +18930,26 @@ class SettingsManager {
             try {
                 // Apply theme
                 if (settings.theme !== 'system') {
-                    // TODO: Implement theme switching
-                    // For now, just log that we would change the theme
-                    console.log('Would switch theme to:', settings.theme);
+                    // Send theme to all windows
+                    const allWindows = electron_1.BrowserWindow.getAllWindows();
+                    allWindows.forEach(window => {
+                        window.webContents.send('theme:changed', settings.theme);
+                    });
+                }
+                else {
+                    // Use system theme
+                    const isDark = electron_1.nativeTheme.shouldUseDarkColors;
+                    const allWindows = electron_1.BrowserWindow.getAllWindows();
+                    allWindows.forEach(window => {
+                        window.webContents.send('theme:changed', isDark ? 'dark' : 'light');
+                    });
+                    // Listen for system theme changes
+                    electron_1.nativeTheme.on('updated', () => {
+                        const isDark = electron_1.nativeTheme.shouldUseDarkColors;
+                        allWindows.forEach(window => {
+                            window.webContents.send('theme:changed', isDark ? 'dark' : 'light');
+                        });
+                    });
                 }
                 // Apply startup behavior
                 if (settings.startAtLogin) {

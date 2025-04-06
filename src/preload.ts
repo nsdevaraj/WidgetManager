@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld('api', {
   updateWidget: (id: string, updates: any) => ipcRenderer.invoke('widget:update', { id, updates }),
   deleteWidget: (id: string) => ipcRenderer.invoke('widget:delete', id),
   
+  // Event handling
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.on(channel, callback);
+  },
+  off: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.off(channel, callback);
+  },
+  
   // Screen management
   getScreens: () => ipcRenderer.invoke('screen:get-all'),
   getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),

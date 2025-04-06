@@ -4,6 +4,7 @@ import { WindowChrome } from './WindowChrome';
 import { WidgetManager } from './WidgetManager';
 import { PreferencesForm } from './PreferencesForm';
 import { AppSettings, defaultAppSettings } from '../../types/config';
+import { IElectronAPI } from '../../types/electron';
 
 type SettingsTab = 'widgets' | 'preferences';
 
@@ -19,44 +20,67 @@ const ErrorNotification: React.FC<ErrorNotificationProps> = ({ message, onDismis
   </div>
 );
 
+function isElectronAPI(api: any): api is IElectronAPI {
+  return api && 
+    typeof api.invoke === 'function' && 
+    typeof api.on === 'function' && 
+    typeof api.off === 'function';
+}
+
 export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('widgets');
-  const [appSettings, setAppSettings] = useState<AppSettings>(defaultAppSettings);
+  const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadSettings = async () => {
+    const api = window.api;
+    if (!isElectronAPI(api)) {
+      setError('Electron API not available');
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchSettings = async () => {
       try {
         setIsLoading(true);
-        // Check if window.electron exists
-        if (!window.electron) {
-          throw new Error('Electron API not available');
-        }
-        const settings = await window.electron.invoke('settings:get');
-        setAppSettings(settings);
+        const settings = await api.invoke('settings:get');
+        setSettings(settings as AppSettings);
         setError(null);
-      } catch (err) {
-        console.error('Failed to load settings:', err);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
         setError('Failed to load settings. Using defaults.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadSettings();
+    fetchSettings();
+
+    const handleThemeChange = (_: any, theme: AppSettings['theme']) => {
+      setSettings((prev) => ({ ...prev, theme }));
+    };
+
+    api.on('theme-changed', handleThemeChange);
+
+    return () => {
+      api.off('theme-changed', handleThemeChange);
+    };
   }, []);
 
   const handleSettingsChange = async (newSettings: AppSettings) => {
+    const api = window.api;
+    if (!isElectronAPI(api)) {
+      setError('Electron API not available');
+      return;
+    }
+
     try {
-      if (!window.electron) {
-        throw new Error('Electron API not available');
-      }
-      await window.electron.invoke('settings:update', newSettings);
-      setAppSettings(newSettings);
+      const updatedSettings = await api.invoke('settings:update', newSettings);
+      setSettings(updatedSettings as AppSettings);
       setError(null);
-    } catch (err) {
-      console.error('Failed to update settings:', err);
+    } catch (error) {
+      console.error('Failed to update settings:', error);
       setError('Failed to save settings. Please try again.');
     }
   };
@@ -73,48 +97,47 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <div className="settings-window">
-      <WindowChrome title="Settings" />
-      {error && (
-        <ErrorNotification 
-          message={error} 
-          onDismiss={() => setError(null)} 
-        />
-      )}
-      <div className="settings-container">
-        <nav className="settings-nav">
+    <div className="settings-container">
+      <div className="settings-header">
+        <div className="settings-tabs">
           <button
-            className={`nav-button ${activeTab === 'widgets' ? 'active' : ''}`}
+            className={`tab-button ${activeTab === 'widgets' ? 'active' : ''}`}
             onClick={() => setActiveTab('widgets')}
           >
             Widgets
           </button>
           <button
-            className={`nav-button ${activeTab === 'preferences' ? 'active' : ''}`}
+            className={`tab-button ${activeTab === 'preferences' ? 'active' : ''}`}
             onClick={() => setActiveTab('preferences')}
           >
             Preferences
           </button>
-        </nav>
-        
-        <main className="settings-content">
-          {activeTab === 'widgets' && (
-            <div className="widgets-section">
-              <h2>Widget Management</h2>
-              <WidgetManager />
-            </div>
-          )}
-          
-          {activeTab === 'preferences' && (
-            <div className="preferences-section">
-              <h2>Application Preferences</h2>
-              <PreferencesForm
-                initialSettings={appSettings}
-                onSettingsChange={handleSettingsChange}
-              />
-            </div>
-          )}
-        </main>
+        </div>
+      </div>
+
+      <div className="settings-content">
+        {error && <div className="error-message">{error}</div>}
+        {isLoading ? (
+          <div className="loading">Loading settings...</div>
+        ) : (
+          <>
+            {activeTab === 'preferences' && (
+              <div className="preferences-section">
+                <h2>Application Preferences</h2>
+                <PreferencesForm
+                  initialSettings={settings}
+                  onSettingsChange={handleSettingsChange}
+                />
+              </div>
+            )}
+            {activeTab === 'widgets' && (
+              <div className="widgets-section">
+                <h2>Widget Management</h2>
+                <WidgetManager />
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
