@@ -1,13 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense, lazy } from 'react';
 import { WidgetConfig, Position } from '../../types/config';
 import { WidgetContextMenu } from './WidgetContextMenu';
 import './Widget.css';
-import { ClockWidget } from './widgets/ClockWidget';
-import { WeatherWidget } from './widgets/WeatherWidget';
-import { NotesWidget } from './widgets/NotesWidget';
-import { CalendarWidget } from './widgets/CalendarWidget';
 import { WidgetMetrics } from './WidgetMetrics';
 import '../styles/WidgetMetrics.css';
+
+// Lazy load widget components
+const ClockWidget = lazy(() => import('./widgets/ClockWidget').then(m => ({ default: m.ClockWidget })));
+const WeatherWidget = lazy(() => import('./widgets/WeatherWidget').then(m => ({ default: m.WeatherWidget })));
+const NotesWidget = lazy(() => import('./widgets/NotesWidget').then(m => ({ default: m.NotesWidget })));
+const CalendarWidget = lazy(() => import('./widgets/CalendarWidget').then(m => ({ default: m.CalendarWidget })));
 
 interface WidgetProps {
   config: WidgetConfig;
@@ -27,25 +29,68 @@ export const Widget: React.FC<WidgetProps> = ({
   const [showOpacityFeedback, setShowOpacityFeedback] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(true);
   const opacityFeedbackTimer = useRef<NodeJS.Timeout>();
   const dragState = useRef({ startX: 0, startY: 0 });
   const currentPosition = useRef({ x: config.position.x, y: config.position.y });
   const containerRef = useRef<HTMLDivElement>(null);
+  const intersectionObserver = useRef<IntersectionObserver | null>(null);
+
+  // Set up intersection observer for visibility tracking
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    intersectionObserver.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          setIsVisible(entry.isIntersecting);
+          if (config.type === 'url' && entry.isIntersecting) {
+            // Reload BrowserView content if it was hidden
+            window.api.createBrowserView(config.id, config.settings?.initialUrl || 'about:blank');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    intersectionObserver.current.observe(containerRef.current);
+
+    return () => {
+      if (intersectionObserver.current) {
+        intersectionObserver.current.disconnect();
+      }
+    };
+  }, [config.id, config.type]);
+
+  // Handle loading state
+  useEffect(() => {
+    const handleLoadingState = (_: any, data: { id: string; isLoading: boolean }) => {
+      if (data.id === config.id) {
+        setIsLoading(data.isLoading);
+      }
+    };
+
+    window.api.on('widget:loading-state', handleLoadingState);
+    return () => {
+      window.api.off('widget:loading-state', handleLoadingState);
+    };
+  }, [config.id]);
 
   useEffect(() => {
-    if (config.type === 'url' && containerRef.current) {
-      // Create BrowserView when component mounts
+    if (config.type === 'url' && containerRef.current && isVisible) {
+      // Create BrowserView when component mounts and is visible
       window.api.createBrowserView(config.id, config.settings?.initialUrl || 'about:blank');
 
-      // Cleanup BrowserView when component unmounts
+      // Cleanup BrowserView when component unmounts or becomes invisible
       return () => {
         window.api.destroyBrowserView(config.id);
       };
     }
-  }, [config.type, config.id]);
+  }, [config.type, config.id, isVisible]);
 
   useEffect(() => {
-    if (config.type === 'url' && containerRef.current) {
+    if (config.type === 'url' && containerRef.current && isVisible) {
       // Update BrowserView bounds when container size/position changes
       const rect = containerRef.current.getBoundingClientRect();
       window.api.setBrowserViewBounds(config.id, {
@@ -55,7 +100,7 @@ export const Widget: React.FC<WidgetProps> = ({
         height: Math.round(rect.height)
       });
     }
-  }, [config.position.x, config.position.y, config.size.width, config.size.height]);
+  }, [config.position.x, config.position.y, config.size.width, config.size.height, isVisible]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -295,108 +340,40 @@ export const Widget: React.FC<WidgetProps> = ({
     }
   }
 
+  const renderWidget = () => {
+    if (!isVisible) {
+      return <div className="widget-placeholder" />;
+    }
+
+    return (
+      <Suspense fallback={<div className="widget-loading">Loading...</div>}>
+        {isLoading && <div className="widget-loading-overlay">Loading...</div>}
+        {config.type === 'clock' && <ClockWidget />}
+        {config.type === 'weather' && <WeatherWidget />}
+        {config.type === 'notes' && <NotesWidget />}
+        {config.type === 'calendar' && <CalendarWidget />}
+        {config.type === 'url' && <div className="url-widget-container" />}
+        <WidgetMetrics widgetId={config.id} />
+      </Suspense>
+    );
+  };
+
   return (
-    <>
-      <div
-        ref={containerRef}
-        className={`widget ${config.type} ${isDragging ? 'dragging' : ''} ${standalone ? 'standalone' : ''}`}
-        style={style}
-        onMouseDown={handleMouseDown}
-        onContextMenu={handleContextMenu}
-      >
-        <div className="widget-header">
-          <h3 className="widget-title">{config.type}</h3>
-          <div className="widget-controls">
-            <div 
-              className="opacity-control-container"
-              onMouseEnter={() => setShowOpacityControl(true)}
-              onMouseLeave={() => setShowOpacityControl(false)}
-            >
-              <button className="opacity-button" title="Adjust Opacity">
-                {Math.round((config.settings?.opacity ?? 1) * 100)}%
-              </button>
-              {showOpacityControl && (
-                <div className="opacity-slider-container">
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1"
-                    step="0.1"
-                    value={config.settings?.opacity ?? 1}
-                    onChange={(e) => handleOpacityChange(Number(e.target.value))}
-                  />
-                  <div className="opacity-presets">
-                    {[0.2, 0.4, 0.6, 0.8, 1].map(value => (
-                      <button
-                        key={value}
-                        className="opacity-preset"
-                        onClick={() => handleOpacityChange(value)}
-                      >
-                        {value * 100}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <button 
-              className={`always-on-top-button ${config.settings?.isAlwaysOnTop ? 'active' : ''}`}
-              onClick={handleToggleAlwaysOnTop}
-              title={`${config.settings?.isAlwaysOnTop ? 'Disable' : 'Enable'} Always on Top (Alt + T)`}
-            >
-              📌
-            </button>
-            <div className="z-index-controls">
-              <button 
-                className="z-index-button"
-                onClick={() => handleZIndexChange(1)}
-                title="Bring Forward (Alt + ])"
-              >
-                ⬆️
-              </button>
-              <button 
-                className="z-index-button"
-                onClick={() => handleZIndexChange(-1)}
-                title="Send Backward (Alt + [)"
-              >
-                ⬇️
-              </button>
-            </div>
-          </div>
-        </div>
-        {showOpacityFeedback && (
-          <div className="opacity-feedback">
-            Opacity: {Math.round((config.settings?.opacity ?? 1) * 100)}%
-          </div>
-        )}
-        <div className="widget-content">
-          {config.type === 'clock' && <ClockWidget />}
-          {config.type === 'weather' && <WeatherWidget />}
-          {config.type === 'notes' && <NotesWidget />}
-          {config.type === 'calendar' && <CalendarWidget />}
-          {config.type === 'url' && (
-            <div 
-              ref={containerRef}
-              style={{
-                width: '100%',
-                height: 'calc(100% - 36px)', // Subtract header height
-                borderRadius: '0 0 8px 8px'
-              }}
-            />
-          )}
-        </div>
-        {!standalone && (
-          <div 
-            className="widget-drag-handle" 
-            onMouseDown={handleMouseDown}
-            title="Drag to move"
-          >
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 18h8v-2H8v2zm0-4h8v-2H8v2zm0-4h8V8H8v2zm0-4h8V4H8v2z"/>
-            </svg>
-          </div>
-        )}
-      </div>
+    <div
+      ref={containerRef}
+      className={`widget ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
+      style={{
+        transform: `translate(${config.position.x}px, ${config.position.y}px)`,
+        width: config.size.width,
+        height: config.size.height,
+        opacity: config.settings?.opacity ?? 1,
+        zIndex: config.settings?.zIndex ?? 0,
+        visibility: isVisible ? 'visible' : 'hidden'
+      }}
+      onMouseDown={handleMouseDown}
+      onContextMenu={handleContextMenu}
+    >
+      {renderWidget()}
       {showContextMenu && (
         <WidgetContextMenu
           x={contextMenuPosition.x}
@@ -410,7 +387,23 @@ export const Widget: React.FC<WidgetProps> = ({
           currentZIndex={config.settings?.zIndex ?? 0}
         />
       )}
-      <WidgetMetrics widgetId={config.id} />
-    </>
+      {showOpacityControl && (
+        <div className="opacity-control">
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.1"
+            value={config.settings?.opacity ?? 1}
+            onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
+          />
+        </div>
+      )}
+      {showOpacityFeedback && (
+        <div className="opacity-feedback">
+          Opacity: {Math.round((config.settings?.opacity ?? 1) * 100)}%
+        </div>
+      )}
+    </div>
   );
 }; 

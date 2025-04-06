@@ -253,78 +253,93 @@ export class WidgetWindow {
   }
 
   private async collectResourceMetrics(): Promise<WidgetResourceMetrics> {
-    const memoryInfo = await this.window.webContents.executeJavaScript(`
-      new Promise(resolve => {
-        if (window.performance && performance.memory) {
-          resolve({
-            private: performance.memory.usedJSHeapSize
-          });
-        } else {
-          resolve({
-            private: 0
-          });
-        }
-      });
-    `);
-
-    const cpuInfo = {
-      percentCPUUsage: await this.window.webContents.executeJavaScript(`
+    try {
+      // Get memory info using process API
+      const memoryInfo = await this.window.webContents.executeJavaScript(`
         new Promise(resolve => {
-          if (window.performance && performance.now) {
-            const start = performance.now();
-            const iterations = 1000000;
-            for (let i = 0; i < iterations; i++) {
-              Math.sqrt(i);
-            }
-            const end = performance.now();
-            const duration = end - start;
-            resolve((duration / 10) * (navigator.hardwareConcurrency || 1));
+          if (window.performance && performance.memory) {
+            resolve({
+              private: performance.memory.usedJSHeapSize
+            });
           } else {
-            resolve(0);
+            resolve({
+              private: 0
+            });
           }
         });
-      `)
-    };
+      `);
 
-    const loadTime = Date.now() - this.startTime;
+      // Get CPU usage
+      const cpuInfo = {
+        percentCPUUsage: await this.window.webContents.executeJavaScript(`
+          new Promise(resolve => {
+            if (window.performance && performance.now) {
+              const start = performance.now();
+              const iterations = 1000000;
+              for (let i = 0; i < iterations; i++) {
+                Math.sqrt(i);
+              }
+              const end = performance.now();
+              const duration = end - start;
+              resolve((duration / 10) * (navigator.hardwareConcurrency || 1));
+            } else {
+              resolve(0);
+            }
+          });
+        `)
+      };
 
-    // Get FPS using requestAnimationFrame
-    const fpsStats = await this.window.webContents.executeJavaScript(`
-      new Promise(resolve => {
-        let frameCount = 0;
-        let lastTime = performance.now();
-        
-        function countFrame() {
-          const now = performance.now();
-          frameCount++;
+      // Get FPS using requestAnimationFrame
+      const fpsStats = await this.window.webContents.executeJavaScript(`
+        new Promise(resolve => {
+          let frameCount = 0;
+          let lastTime = performance.now();
           
-          if (now - lastTime >= 1000) {
-            resolve(frameCount);
-          } else {
-            requestAnimationFrame(countFrame);
+          function countFrame() {
+            const now = performance.now();
+            frameCount++;
+            
+            if (now - lastTime >= 1000) {
+              resolve(frameCount);
+            } else {
+              requestAnimationFrame(countFrame);
+            }
           }
-        }
-        
-        requestAnimationFrame(countFrame);
-      });
-    `);
+          
+          requestAnimationFrame(countFrame);
+        });
+      `);
 
-    // Get network request count
-    const networkStats = await this.window.webContents.executeJavaScript(`
-      new Promise(resolve => {
-        const entries = performance.getEntriesByType('resource');
-        resolve(entries.length);
-      });
-    `);
+      // Get network request count
+      const networkStats = await this.window.webContents.executeJavaScript(`
+        new Promise(resolve => {
+          const entries = performance.getEntriesByType('resource');
+          resolve(entries.length);
+        });
+      `);
 
-    return {
-      cpuUsage: Math.round(cpuInfo.percentCPUUsage),
-      memoryUsage: memoryInfo.private,
-      fps: Math.round(fpsStats),
-      loadTime,
-      networkRequests: networkStats,
-      lastUpdated: Date.now()
-    };
+      return {
+        widgetId: this.config.id,
+        cpuUsage: Math.round(cpuInfo.percentCPUUsage),
+        memoryUsage: memoryInfo.private,
+        fps: Math.round(fpsStats),
+        loadTime: Date.now() - this.startTime,
+        networkRequests: networkStats,
+        lastUpdated: Date.now()
+      };
+    } catch (error) {
+      console.error('Error collecting metrics:', error);
+      // Return default metrics with widgetId on error
+      return {
+        widgetId: this.config.id,
+        cpuUsage: 0,
+        memoryUsage: 0,
+        fps: 0,
+        loadTime: Date.now() - this.startTime,
+        networkRequests: 0,
+        lastUpdated: Date.now()
+      };
+    }
   }
 
   private startResourceMonitoring() {

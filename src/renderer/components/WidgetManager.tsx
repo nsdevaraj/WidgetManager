@@ -67,6 +67,23 @@ const WIDGET_TYPES: WidgetTypeInfo[] = [
   }
 ];
 
+// UUID generation with proper TypeScript support
+function generateUUID(): string {
+  // Use crypto.randomUUID() if available, with type assertion
+  if ('randomUUID' in crypto) {
+    return (crypto as Crypto & { randomUUID(): string }).randomUUID();
+  }
+
+  // Fallback implementation using crypto.getRandomValues()
+  const getRandomHex = (c: string): string => {
+    const r = crypto.getRandomValues(new Uint8Array(1))[0];
+    const v = c === 'x' ? (r & 0x0f) | 0x40 : (r & 0x3f) | 0x80;
+    return v.toString(16);
+  };
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, getRandomHex);
+}
+
 export const WidgetManager: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [selectedWidgets, setSelectedWidgets] = useState<Set<string>>(new Set());
@@ -429,11 +446,11 @@ export const WidgetManager: React.FC = () => {
 
   // Group management functions
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim() || selectedWidgets.size === 0) return;
+    if (!newGroupName || selectedWidgets.size === 0) return;
 
     try {
       const newGroup: WidgetGroup = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name: newGroupName.trim(),
         widgetIds: Array.from(selectedWidgets),
         isVisible: true,

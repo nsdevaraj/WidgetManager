@@ -1,6 +1,24 @@
 import { AppSettings, WidgetConfig, WidgetResourceMetrics } from './config';
 import { IpcRendererEvent } from 'electron';
 
+export interface Screen {
+  id: number;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  workArea: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  scaleFactor: number;
+  isPrimary: boolean;
+}
+
 export interface IElectronAPI {
   // Settings management
   getSettings: () => Promise<AppSettings>;
