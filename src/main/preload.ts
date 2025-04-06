@@ -79,3 +79,26 @@ const api: IElectronAPI = {
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', api);
+
+contextBridge.exposeInMainWorld(
+  'electron',
+  {
+    // ... existing exposed methods ...
+    
+    // Auto-updater methods
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+    
+    // Auto-updater events
+    onUpdateAvailable: (callback: (event: any, info: any) => void) => {
+      ipcRenderer.on('update-available', callback);
+    },
+    onUpdateDownloaded: (callback: (event: any, info: any) => void) => {
+      ipcRenderer.on('update-downloaded', callback);
+    },
+    onUpdaterMessage: (callback: (event: any, message: any) => void) => {
+      ipcRenderer.on('updater-message', callback);
+    }
+  }
+);

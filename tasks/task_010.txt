@@ -30,7 +30,7 @@ Test builds on all target platforms. Verify installers work correctly. Test auto
 6. Test the build process on each platform to ensure installers are generated correctly
 7. Document the build process for the development team
 
-## 2. Implement Code Signing and Auto-Updates [in-progress]
+## 2. Implement Code Signing and Auto-Updates [done]
 ### Dependencies: 10.1
 ### Description: Configure code signing for all platforms and implement auto-update functionality to ensure users can receive application updates.
 ### Details:

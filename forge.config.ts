@@ -43,10 +43,42 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      name: 'URLWidgets',
+      authors: 'Devaraj',
+      iconUrl: 'https://url-to-your-icon.ico',
+      setupIcon: './assets/icon.ico',
+      certificateFile: process.env.WINDOWS_CERTIFICATE_FILE,
+      certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD
+    }),
     new MakerZIP({}, ['darwin']),
-    new MakerRpm({}),
-    new MakerDeb({}),
+    new MakerDeb({
+      options: {
+        icon: './assets/icon.png',
+        maintainer: 'Devaraj',
+        homepage: 'https://your-website.com'
+      }
+    }),
+    new MakerRpm({
+      options: {
+        icon: './assets/icon.png',
+        description: 'App for URL Widgets',
+        homepage: 'https://your-website.com'
+      }
+    })
+  ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'your-github-username',
+          name: 'URLWidgets'
+        },
+        prerelease: false,
+        draft: true
+      }
+    }
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),

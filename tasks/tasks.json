@@ -453,7 +453,7 @@
             1
           ],
           "details": "1. Obtain code signing certificates for each platform (Windows, macOS, and Linux)\n2. Configure code signing in Electron Forge for each platform\n3. Set up an update server or use a service like GitHub releases\n4. Implement the auto-update module using Electron's autoUpdater\n5. Add update checking logic on application startup\n6. Create update notification UI for users\n7. Implement update download and installation process\n8. Add update-related user preferences (automatic vs. manual)\n9. Test the update process on all platforms\n10. Document the update workflow for both developers and end-users",
-          "status": "in-progress",
+          "status": "done",
           "parentTaskId": 10
         },
         {
