@@ -41,7 +41,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const loadedWidgets = await window.api.listWidgets();
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+      const loadedWidgets = await window.electron.invoke('widget:list') as WidgetConfig[];
       setWidgets(loadedWidgets);
     } catch (error) {
       console.error('Failed to load widgets:', error);
@@ -55,7 +58,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const newWidget = await window.api.addWidget({
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+      const newWidget = await window.electron.invoke('widget:add', {
         type: formData.type,
         position: { x: 0, y: 0 }, // Default position
         size: {
@@ -84,16 +90,22 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const updatedWidget = await window.api.updateWidget(id, {
-        size: {
-          width: formData.size.width,
-          height: formData.size.height
-        },
-        settings: {
-          isAlwaysOnTop: formData.settings.isAlwaysOnTop,
-          opacity: formData.settings.opacity,
-          customCSS: formData.settings.customCSS,
-          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+      const updatedWidget = await window.electron.invoke('widget:update', {
+        id,
+        updates: {
+          size: {
+            width: formData.size.width,
+            height: formData.size.height
+          },
+          settings: {
+            isAlwaysOnTop: formData.settings.isAlwaysOnTop,
+            opacity: formData.settings.opacity,
+            customCSS: formData.settings.customCSS,
+            ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
+          }
         }
       });
       const updatedWidgets = widgets.map(w => 
@@ -115,7 +127,10 @@ export const WidgetManager: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await window.api.deleteWidget(id);
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+      await window.electron.invoke('widget:delete', id);
       setWidgets(widgets.filter(w => w.id !== id));
       if (selectedWidget === id) {
         setSelectedWidget(null);
@@ -141,7 +156,8 @@ export const WidgetManager: React.FC = () => {
       settings: {
         isAlwaysOnTop: widget.settings?.isAlwaysOnTop ?? false,
         opacity: widget.settings?.opacity ?? 1,
-        customCSS: widget.settings?.customCSS ?? ''
+        customCSS: widget.settings?.customCSS ?? '',
+        initialUrl: widget.settings?.initialUrl
       }
     });
     setIsEditing(true);
@@ -198,38 +214,20 @@ export const WidgetManager: React.FC = () => {
         {widgets.length === 0 ? (
           <div className="no-widgets">
             <p>No widgets installed yet.</p>
-            <p>Click "Add Widget" to create your first widget!</p>
+            <p>Click "Add Widget" to create your first widget.</p>
           </div>
         ) : (
-          widgets.map(widget => (
-            <div
-              key={widget.id}
-              className={`widget-item ${selectedWidget === widget.id ? 'selected' : ''}`}
-            >
-              <div className="widget-info">
-                <span className="widget-type">{widget.type}</span>
-                <span className="widget-size">
-                  {widget.size.width}×{widget.size.height}
-                </span>
+          <div className="widget-grid">
+            {widgets.map(widget => (
+              <div key={widget.id} className="widget-item">
+                <h4>{widget.type}</h4>
+                <div className="widget-actions">
+                  <button onClick={() => handleEditWidget(widget)}>Edit</button>
+                  <button onClick={() => handleRemoveWidget(widget.id)}>Remove</button>
+                </div>
               </div>
-              <div className="widget-actions">
-                <button
-                  className="edit-button"
-                  onClick={() => handleEditWidget(widget)}
-                  disabled={isLoading}
-                >
-                  Edit
-                </button>
-                <button
-                  className="remove-button"
-                  onClick={() => handleRemoveWidget(widget.id)}
-                  disabled={isLoading}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
@@ -344,23 +342,9 @@ export const WidgetManager: React.FC = () => {
                     ...formData,
                     settings: { ...formData.settings, initialUrl: e.target.value }
                   })}
-                  placeholder="Enter URL (e.g., https://widgets.cursor.sh/welcome.html)"
+                  placeholder="Enter URL (e.g., https://google.com)"
                   disabled={isLoading}
-                />
-                <small className="help-text">
-                  Many websites cannot be embedded due to security restrictions. Here are some URLs you can try:
-                  <ul>
-                    <li><code>https://widgets.cursor.sh/welcome.html</code> - Welcome page</li>
-                    <li><code>https://widgets.cursor.sh/clock.html</code> - Simple clock</li>
-                    <li><code>https://widgets.cursor.sh/weather.html</code> - Weather widget</li>
-                  </ul>
-                  To embed other websites, they must:
-                  <ul>
-                    <li>Allow embedding via Content Security Policy</li>
-                    <li>Not use X-Frame-Options restrictions</li>
-                    <li>Be served over HTTPS</li>
-                  </ul>
-                </small>
+                /> 
               </div>
             )}
 

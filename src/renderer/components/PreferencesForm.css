@@ -1,0 +1,82 @@
+.preferences-form {
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-section {
+  margin-bottom: 24px;
+  background: var(--bg-secondary);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.form-section h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  font-size: 1.1em;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.form-group input[type="checkbox"] + label {
+  display: inline;
+  margin-left: 8px;
+}
+
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.form-actions {
+  margin-top: 24px;
+  text-align: right;
+}
+
+.reset-button {
+  padding: 8px 16px;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover {
+  background-color: var(--danger-color-hover);
+}
+
+.preview-notice {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.9em;
+} 

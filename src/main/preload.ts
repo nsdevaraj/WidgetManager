@@ -2,42 +2,55 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IElectronAPI } from '../types/window';
+import { AppSettings } from '../types/config';
 
-// Create the API object
-const api = {
-  // Widget management
-  listWidgets: () => ipcRenderer.invoke('widget:list'),
-  addWidget: (config: any) => ipcRenderer.invoke('widget:add', config),
-  updateWidget: (id: string, updates: any) => ipcRenderer.invoke('widget:update', { id, updates }),
-  deleteWidget: (id: string) => ipcRenderer.invoke('widget:delete', id),
-  
-  // Screen management
-  getScreens: () => ipcRenderer.invoke('screen:get-all'),
-  getPrimaryScreen: () => ipcRenderer.invoke('screen:get-primary'),
-  getCurrentScreen: () => ipcRenderer.invoke('screen:get-current'),
-  
-  // Window management
-  getPosition: () => ipcRenderer.invoke('window:get-position'),
-  setPosition: (x: number, y: number) => ipcRenderer.invoke('window:set-position', x, y),
-  minimize: () => ipcRenderer.invoke('window:minimize'),
-  maximize: () => ipcRenderer.invoke('window:maximize'),
-  restore: () => ipcRenderer.invoke('window:restore'),
-  close: () => ipcRenderer.invoke('window:close'),
+// Create a strongly typed API
+interface ElectronAPI {
+  invoke(channel: 'settings:get'): Promise<AppSettings>;
+  invoke(channel: 'settings:update', settings: AppSettings): Promise<void>;
+  invoke(channel: string, ...args: any[]): Promise<unknown>;
+}
 
-  // Settings management
-  getSettings: () => ipcRenderer.invoke('settings:get'),
-  updateSettings: (updates: any) => ipcRenderer.invoke('settings:update', updates),
-  resetSettings: () => ipcRenderer.invoke('settings:reset'),
+// Declare the API on the window object
+declare global {
+  interface Window {
+    electron: ElectronAPI;
+  }
+}
 
-  // Window drag and resize events
-  onStartDrag: () => ipcRenderer.send('window:start-drag'),
-  onStartResize: (direction: 'bottom' | 'right' | 'bottomRight') => 
-    ipcRenderer.send('window:start-resize', direction),
-  onMouseMove: (x: number, y: number) => 
-    ipcRenderer.send('window:mouse-move', { x, y }),
-  onMouseUp: () => ipcRenderer.send('window:mouse-up')
-};
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld(
+  'electron',
+  {
+    invoke: async (channel: string, ...args: any[]) => {
+      // List of valid channels that can be called from the renderer
+      const validChannels = [
+        'settings:get',
+        'settings:update',
+        'settings:reset',
+        'window:get-position',
+        'window:set-position',
+        'window:minimize',
+        'window:maximize',
+        'window:restore',
+        'window:close',
+        'widget:add',
+        'widget:delete',
+        'widget:update',
+        'widget:list'
+      ];
 
-// Expose the API to the renderer process
-contextBridge.exposeInMainWorld('api', api);
+      if (validChannels.includes(channel)) {
+        try {
+          return await ipcRenderer.invoke(channel, ...args);
+        } catch (error) {
+          console.error(`Error invoking ${channel}:`, error);
+          throw error;
+        }
+      }
+
+      throw new Error(`Invalid channel: ${channel}`);
+    }
+  }
+);

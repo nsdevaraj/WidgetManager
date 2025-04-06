@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session } from 'electron';
 import * as path from 'path';
 import { WindowManager, initializeWindowManagement } from './window-manager';
 import { ScreenManager, initializeScreenManagement } from './screen-manager';
@@ -24,6 +24,31 @@ let settingsManager: SettingsManager | null = null;
 let ipcHandlersInitialized = false;
 
 export const createWindow = (): BrowserWindow => {
+  // Set up Content Security Policy
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self';",
+          // In development, allow eval for webpack hot reloading
+          isDev 
+            ? "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
+            : "script-src 'self';",
+          "style-src 'self' 'unsafe-inline';",
+          // In development, allow connection to webpack dev server
+          isDev
+            ? "connect-src 'self' ws: http: https:;"
+            : "connect-src 'self';",
+          "img-src 'self' data: https:;",
+          "font-src 'self' data:;",
+        ].join(' ')
+      }
+    });
+  });
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     height: 600,
@@ -36,6 +61,9 @@ export const createWindow = (): BrowserWindow => {
       sandbox: true, // Enable sandboxing
       webviewTag: false, // Disable webview tag for security
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      // Additional security settings
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
     },
     // Set minimum dimensions
     minWidth: 400,
@@ -54,7 +82,14 @@ export const createWindow = (): BrowserWindow => {
   // Handle window loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Failed to load:', errorDescription);
-    // TODO: Show error UI to user
+    // Retry loading after a short delay
+    setTimeout(() => {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY).catch(err => {
+          console.error('Failed to reload app:', err);
+        });
+      }
+    }, 1000);
   });
 
   // Show window when ready to prevent flickering
@@ -63,12 +98,9 @@ export const createWindow = (): BrowserWindow => {
   });
 
   // Load the app's entry point
-  if (MAIN_WINDOW_WEBPACK_ENTRY) {
-    mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY).catch(err => {
-      console.error('Failed to load app:', err);
-      // TODO: Show error UI to user
-    });
-  }
+  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY).catch(err => {
+    console.error('Failed to load app:', err);
+  });
 
   // Disable DevTools in production
   if (process.env.NODE_ENV === 'development') {
@@ -81,18 +113,23 @@ export const createWindow = (): BrowserWindow => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  // Initialize managers
-  widgetManager = initializeWidgetManagement();
-  settingsManager = initializeSettingsManagement();
+app.whenReady().then(async () => {
+  try {
+    // Initialize managers
+    widgetManager = await initializeWidgetManagement();
+    settingsManager = await initializeSettingsManagement();
 
-  // Initialize IPC handlers after managers are ready
-  if (!ipcHandlersInitialized) {
-    initializeIpcHandlers();
-    ipcHandlersInitialized = true;
+    // Initialize IPC handlers after managers are ready
+    if (!ipcHandlersInitialized) {
+      initializeIpcHandlers();
+      ipcHandlersInitialized = true;
+    }
+
+    createWindow();
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    app.quit();
   }
-
-  createWindow();
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

@@ -18600,10 +18600,29 @@ exports.initializeIpcHandlers = initializeIpcHandlers;
 /*!**************************!*\
   !*** ./src/main/main.ts ***!
   \**************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try {
+            step(generator.next(value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function rejected(value) { try {
+            step(generator["throw"](value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createWindow = void 0;
 const electron_1 = __webpack_require__(/*! electron */ "electron");
@@ -18622,6 +18641,26 @@ let settingsManager = null;
 // Track if IPC handlers have been initialized
 let ipcHandlersInitialized = false;
 const createWindow = () => {
+    // Set up Content Security Policy
+    electron_1.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const isDev = "development" === 'development';
+        callback({
+            responseHeaders: Object.assign(Object.assign({}, details.responseHeaders), { 'Content-Security-Policy': [
+                    "default-src 'self';",
+                    // In development, allow eval for webpack hot reloading
+                    isDev
+                        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
+                        : "script-src 'self';",
+                    "style-src 'self' 'unsafe-inline';",
+                    // In development, allow connection to webpack dev server
+                    isDev
+                        ? "connect-src 'self' ws: http: https:;"
+                        : "connect-src 'self';",
+                    "img-src 'self' data: https:;",
+                    "font-src 'self' data:;",
+                ].join(' ') })
+        });
+    });
     // Create the browser window.
     const mainWindow = new electron_1.BrowserWindow({
         height: 600,
@@ -18634,6 +18673,9 @@ const createWindow = () => {
             sandbox: true,
             webviewTag: false,
             preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/main_window/preload.js',
+            // Additional security settings
+            allowRunningInsecureContent: false,
+            experimentalFeatures: false,
         },
         // Set minimum dimensions
         minWidth: 400,
@@ -18650,19 +18692,23 @@ const createWindow = () => {
     // Handle window loading errors
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Failed to load:', errorDescription);
-        // TODO: Show error UI to user
+        // Retry loading after a short delay
+        setTimeout(() => {
+            if (!mainWindow.isDestroyed()) {
+                mainWindow.loadURL('http://localhost:3000/main_window').catch(err => {
+                    console.error('Failed to reload app:', err);
+                });
+            }
+        }, 1000);
     });
     // Show window when ready to prevent flickering
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
     });
     // Load the app's entry point
-    if (true) {
-        mainWindow.loadURL('http://localhost:3000/main_window').catch(err => {
-            console.error('Failed to load app:', err);
-            // TODO: Show error UI to user
-        });
-    }
+    mainWindow.loadURL('http://localhost:3000/main_window').catch(err => {
+        console.error('Failed to load app:', err);
+    });
     // Disable DevTools in production
     if (true) {
         mainWindow.webContents.openDevTools();
@@ -18673,23 +18719,29 @@ exports.createWindow = createWindow;
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-electron_1.app.whenReady().then(() => {
-    // Initialize managers
-    widgetManager = (0, widget_manager_1.initializeWidgetManagement)();
-    settingsManager = (0, settings_manager_1.initializeSettingsManagement)();
-    // Initialize IPC handlers after managers are ready
-    if (!ipcHandlersInitialized) {
-        (0, ipc_1.initializeIpcHandlers)();
-        ipcHandlersInitialized = true;
+electron_1.app.whenReady().then(() => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Initialize managers
+        widgetManager = yield (0, widget_manager_1.initializeWidgetManagement)();
+        settingsManager = yield (0, settings_manager_1.initializeSettingsManagement)();
+        // Initialize IPC handlers after managers are ready
+        if (!ipcHandlersInitialized) {
+            (0, ipc_1.initializeIpcHandlers)();
+            ipcHandlersInitialized = true;
+        }
+        (0, exports.createWindow)();
     }
-    (0, exports.createWindow)();
+    catch (error) {
+        console.error('Failed to initialize application:', error);
+        electron_1.app.quit();
+    }
     electron_1.app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
         if (electron_1.BrowserWindow.getAllWindows().length === 0)
             (0, exports.createWindow)();
     });
-});
+}));
 // Clean up application-level managers when quitting
 electron_1.app.on('before-quit', () => {
     if (widgetManager) {
@@ -18798,15 +18850,38 @@ exports.initializeScreenManagement = initializeScreenManagement;
 /*!**************************************!*\
   !*** ./src/main/settings-manager.ts ***!
   \**************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try {
+            step(generator.next(value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function rejected(value) { try {
+            step(generator["throw"](value));
+        }
+        catch (e) {
+            reject(e);
+        } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initializeSettingsManagement = exports.SettingsManager = void 0;
+const config_1 = __webpack_require__(/*! ../types/config */ "./src/types/config.ts");
+const store_1 = __webpack_require__(/*! ./store */ "./src/main/store.ts");
+const electron_1 = __webpack_require__(/*! electron */ "electron");
 class SettingsManager {
     constructor() {
-        this.settings = {};
+        this.initialized = false;
+        this.settings = config_1.defaultAppSettings;
     }
     static getInstance() {
         if (!SettingsManager.instance) {
@@ -18814,26 +18889,119 @@ class SettingsManager {
         }
         return SettingsManager.instance;
     }
+    initialize() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.initialized)
+                return;
+            try {
+                yield this.loadSettings();
+                this.initialized = true;
+            }
+            catch (error) {
+                console.error('Failed to initialize settings manager:', error);
+                throw new Error('Failed to initialize settings manager');
+            }
+        });
+    }
+    loadSettings() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const savedSettings = yield store_1.store.get('settings');
+                if (savedSettings) {
+                    this.settings = (0, config_1.validateAppSettings)(savedSettings);
+                }
+            }
+            catch (error) {
+                console.error('Failed to load settings:', error);
+                this.settings = config_1.defaultAppSettings;
+                // Attempt to save default settings
+                try {
+                    yield store_1.store.set('settings', config_1.defaultAppSettings);
+                }
+                catch (saveError) {
+                    console.error('Failed to save default settings:', saveError);
+                }
+            }
+        });
+    }
+    applySettings(settings) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Apply theme
+                if (settings.theme !== 'system') {
+                    // TODO: Implement theme switching
+                    // For now, just log that we would change the theme
+                    console.log('Would switch theme to:', settings.theme);
+                }
+                // Apply startup behavior
+                if (settings.startAtLogin) {
+                    electron_1.app.setLoginItemSettings({
+                        openAtLogin: true,
+                        openAsHidden: settings.startupBehavior === 'minimized'
+                    });
+                }
+                else {
+                    electron_1.app.setLoginItemSettings({
+                        openAtLogin: false
+                    });
+                }
+                // Notify renderer about settings changes
+                // We'll implement this when we add real-time sync between windows
+            }
+            catch (error) {
+                console.error('Error applying settings:', error);
+                throw new Error('Failed to apply settings');
+            }
+        });
+    }
     getSettings() {
-        return Promise.resolve(this.settings);
+        return this.settings;
     }
     updateSettings(updates) {
-        this.settings = Object.assign(Object.assign({}, this.settings), updates);
-        return Promise.resolve(this.settings);
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const newSettings = Object.assign(Object.assign({}, this.settings), updates);
+                const validatedSettings = (0, config_1.validateAppSettings)(newSettings);
+                yield store_1.store.set('settings', validatedSettings);
+                this.settings = validatedSettings;
+                yield this.applySettings(validatedSettings);
+                return validatedSettings;
+            }
+            catch (error) {
+                console.error('Failed to update settings:', error);
+                throw new Error('Failed to update settings');
+            }
+        });
     }
     resetSettings() {
-        this.settings = {};
-        return Promise.resolve(this.settings);
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                yield store_1.store.set('settings', config_1.defaultAppSettings);
+                this.settings = config_1.defaultAppSettings;
+                yield this.applySettings(config_1.defaultAppSettings);
+                return config_1.defaultAppSettings;
+            }
+            catch (error) {
+                console.error('Failed to reset settings:', error);
+                throw new Error('Failed to reset settings');
+            }
+        });
     }
     dispose() {
-        this.settings = {};
-        SettingsManager.instance = null;
+        if (SettingsManager.instance) {
+            SettingsManager.instance = null;
+            this.initialized = false;
+        }
     }
 }
 exports.SettingsManager = SettingsManager;
 SettingsManager.instance = null;
 function initializeSettingsManagement() {
-    return SettingsManager.getInstance();
+    return __awaiter(this, void 0, void 0, function* () {
+        const manager = SettingsManager.getInstance();
+        yield manager.initialize();
+        return manager;
+    });
 }
 exports.initializeSettingsManagement = initializeSettingsManagement;
 

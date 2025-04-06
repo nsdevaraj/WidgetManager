@@ -37,8 +37,23 @@ const config: ForgeConfig = {
               js: './src/main/preload.ts',
             },
           },
+          {
+            html: './src/renderer/widget.html',
+            js: './src/renderer/widget.tsx',
+            name: 'widget_window',
+            preload: {
+              js: './src/main/preload.ts',
+            },
+          },
         ],
       },
+      // Add devContentSecurityPolicy for development
+      devContentSecurityPolicy: `default-src 'self' 'unsafe-inline' 'unsafe-eval' data: ws:;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        font-src 'self' data:;
+        connect-src 'self' ws: http: https:;`,
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application

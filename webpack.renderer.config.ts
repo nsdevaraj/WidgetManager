@@ -16,6 +16,8 @@ export const rendererConfig: Configuration = {
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
   },
+  target: 'electron-renderer',
+  devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false,
 };
 
 export default rendererConfig;
