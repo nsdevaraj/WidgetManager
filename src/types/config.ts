@@ -29,7 +29,8 @@ export const widgetConfigSchema = z.object({
     isAlwaysOnTop: z.boolean().optional(),
     opacity: z.number().min(0.1).max(1).optional(),
     customCSS: z.string().optional(),
-    initialUrl: z.string().optional()
+    initialUrl: z.string().optional(),
+    zIndex: z.number().min(0).optional()
   }).optional()
 });
 
@@ -64,7 +65,8 @@ export const defaultWidgetConfig: Partial<WidgetConfig> = {
   settings: {
     isAlwaysOnTop: false,
     opacity: 1,
-    initialUrl: 'https://widgets.cursor.sh/welcome.html'
+    initialUrl: 'https://widgets.cursor.sh/welcome.html',
+    zIndex: 0
   }
 };
 

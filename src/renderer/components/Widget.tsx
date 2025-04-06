@@ -20,6 +20,9 @@ export const Widget: React.FC<WidgetProps> = ({
   standalone = false 
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [showOpacityControl, setShowOpacityControl] = useState(false);
+  const [showOpacityFeedback, setShowOpacityFeedback] = useState(false);
+  const opacityFeedbackTimer = useRef<NodeJS.Timeout>();
   const dragState = useRef({ startX: 0, startY: 0 });
   const currentPosition = useRef({ x: config.position.x, y: config.position.y });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,94 @@ export const Widget: React.FC<WidgetProps> = ({
       });
     }
   }, [config.position.x, config.position.y, config.size.width, config.size.height]);
+
+  const handleOpacityChange = (newOpacity: number) => {
+    window.api.updateWidget(config.id, {
+      settings: { ...config.settings, opacity: newOpacity }
+    });
+
+    // Show feedback
+    setShowOpacityFeedback(true);
+    if (opacityFeedbackTimer.current) {
+      clearTimeout(opacityFeedbackTimer.current);
+    }
+    opacityFeedbackTimer.current = setTimeout(() => {
+      setShowOpacityFeedback(false);
+    }, 1500);
+  };
+
+  // Handle opacity keyboard shortcuts
+  useEffect(() => {
+    if (!standalone) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey) {
+        let newOpacity: number | null = null;
+
+        switch (e.key) {
+          case '1':
+          case '2':
+          case '3':
+          case '4':
+          case '5':
+          case '6':
+          case '7':
+          case '8':
+          case '9':
+            // Set opacity to key number / 10 (e.g., Alt+5 = 0.5)
+            newOpacity = Number(e.key) / 10;
+            break;
+          case '0':
+            // Alt+0 = full opacity
+            newOpacity = 1;
+            break;
+          case '-':
+            // Decrease opacity by 0.1
+            newOpacity = Math.max(0.1, (config.settings?.opacity ?? 1) - 0.1);
+            break;
+          case '=':
+            // Increase opacity by 0.1
+            newOpacity = Math.min(1, (config.settings?.opacity ?? 1) + 0.1);
+            break;
+          case 't':
+          case 'T':
+            // Toggle always on top
+            window.api.updateWidget(config.id, {
+              settings: {
+                ...config.settings,
+                isAlwaysOnTop: !(config.settings?.isAlwaysOnTop ?? false)
+              }
+            });
+            break;
+          case '[':
+            // Send backward
+            window.api.updateWidget(config.id, {
+              settings: {
+                ...config.settings,
+                zIndex: Math.max(0, (config.settings?.zIndex ?? 0) - 1)
+              }
+            });
+            break;
+          case ']':
+            // Bring forward
+            window.api.updateWidget(config.id, {
+              settings: {
+                ...config.settings,
+                zIndex: (config.settings?.zIndex ?? 0) + 1
+              }
+            });
+            break;
+        }
+
+        if (newOpacity !== null) {
+          handleOpacityChange(newOpacity);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [standalone, config.id, config.settings]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (standalone) {
@@ -158,7 +249,8 @@ export const Widget: React.FC<WidgetProps> = ({
     width: config.size.width,
     height: config.size.height,
     opacity: config.settings?.opacity ?? 1,
-    cursor: isDragging ? 'grabbing' : 'grab'
+    cursor: isDragging ? 'grabbing' : 'grab',
+    zIndex: config.settings?.zIndex ?? 0
   };
 
   if (config.settings?.customCSS) {
@@ -172,16 +264,91 @@ export const Widget: React.FC<WidgetProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={`widget ${config.type} ${isDragging ? 'dragging' : ''} ${standalone ? 'standalone' : ''}`}
       style={style}
       onMouseDown={handleMouseDown}
     >
-      <div 
-        className="widget-header" 
-        onMouseDown={handleMouseDown}
-      >
-        <span className="widget-title">{config.type}</span>
+      <div className="widget-header">
+        <h3 className="widget-title">{config.type}</h3>
+        <div className="widget-controls">
+          <div 
+            className="opacity-control-container"
+            onMouseEnter={() => setShowOpacityControl(true)}
+            onMouseLeave={() => setShowOpacityControl(false)}
+          >
+            <button className="opacity-button" title="Adjust Opacity">
+              {Math.round((config.settings?.opacity ?? 1) * 100)}%
+            </button>
+            {showOpacityControl && (
+              <div className="opacity-slider-container">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.1"
+                  value={config.settings?.opacity ?? 1}
+                  onChange={(e) => handleOpacityChange(Number(e.target.value))}
+                />
+                <div className="opacity-presets">
+                  {[0.2, 0.4, 0.6, 0.8, 1].map(value => (
+                    <button
+                      key={value}
+                      className="opacity-preset"
+                      onClick={() => handleOpacityChange(value)}
+                    >
+                      {value * 100}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <button 
+            className={`always-on-top-button ${config.settings?.isAlwaysOnTop ? 'active' : ''}`}
+            onClick={() => window.api.updateWidget(config.id, {
+              settings: { 
+                ...config.settings, 
+                isAlwaysOnTop: !(config.settings?.isAlwaysOnTop ?? false) 
+              }
+            })}
+            title={`${config.settings?.isAlwaysOnTop ? 'Disable' : 'Enable'} Always on Top (Alt + T)`}
+          >
+            📌
+          </button>
+          <div className="z-index-controls">
+            <button 
+              className="z-index-button"
+              onClick={() => window.api.updateWidget(config.id, {
+                settings: { 
+                  ...config.settings, 
+                  zIndex: ((config.settings?.zIndex ?? 0) + 1) 
+                }
+              })}
+              title="Bring Forward (Alt + ])"
+            >
+              ⬆️
+            </button>
+            <button 
+              className="z-index-button"
+              onClick={() => window.api.updateWidget(config.id, {
+                settings: { 
+                  ...config.settings, 
+                  zIndex: Math.max(0, (config.settings?.zIndex ?? 0) - 1) 
+                }
+              })}
+              title="Send Backward (Alt + [)"
+            >
+              ⬇️
+            </button>
+          </div>
+        </div>
       </div>
+      {showOpacityFeedback && (
+        <div className="opacity-feedback">
+          Opacity: {Math.round((config.settings?.opacity ?? 1) * 100)}%
+        </div>
+      )}
       <div className="widget-content">
         {config.type === 'clock' && <ClockWidget />}
         {config.type === 'weather' && <WeatherWidget />}
