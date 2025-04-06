@@ -401,4 +401,54 @@ textarea:disabled {
 .form-actions button:disabled {
   background-color: #bdc3c7;
   cursor: not-allowed;
+}
+
+.url-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.url-input-container input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.url-input-container input.error {
+  border-color: var(--error-color, #ff5f5f);
+}
+
+.url-input-container input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.preview-button {
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.preview-button:hover:not(:disabled) {
+  background-color: var(--primary-hover-color, #0056b3);
+}
+
+.preview-button:disabled {
+  background-color: var(--disabled-color, #ccc);
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: var(--error-color, #ff5f5f);
+  font-size: 0.9em;
 } 

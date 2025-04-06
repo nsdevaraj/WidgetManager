@@ -18676,7 +18676,7 @@ const createWindow = () => {
             contextIsolation: true,
             sandbox: true,
             webviewTag: false,
-            preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/main_window/preload.js',
+            preload: '/Volumes/Extreme SSD/Repo/URLWidgets/.webpack/renderer/main_window/preload.js',
             // Additional security settings
             allowRunningInsecureContent: false,
             experimentalFeatures: false,
@@ -19416,7 +19416,7 @@ class WidgetWindow {
                 webviewTag: false,
                 webSecurity: true,
                 allowRunningInsecureContent: false,
-                preload: '/Volumes/Extreme SSD/Repo/Widget/.webpack/renderer/widget_window/preload.js',
+                preload: '/Volumes/Extreme SSD/Repo/URLWidgets/.webpack/renderer/widget_window/preload.js',
                 // Allow iframes to load content
                 webgl: true,
                 images: true,

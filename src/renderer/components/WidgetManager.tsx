@@ -121,6 +121,15 @@ export const WidgetManager: React.FC = () => {
     }
   };
 
+  const validateUrl = (url: string): boolean => {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const validateForm = (): string | null => {
     if (formData.size.width < 50 || formData.size.height < 50) {
       return 'Widget size must be at least 50x50 pixels';
@@ -128,8 +137,13 @@ export const WidgetManager: React.FC = () => {
     if (formData.settings.opacity < 0.1 || formData.settings.opacity > 1) {
       return 'Opacity must be between 0.1 and 1';
     }
-    if (formData.type === 'url' && !formData.settings.initialUrl) {
-      return 'URL is required for web widgets';
+    if (formData.type === 'url') {
+      if (!formData.settings.initialUrl) {
+        return 'URL is required for web widgets';
+      }
+      if (!validateUrl(formData.settings.initialUrl)) {
+        return 'Please enter a valid http:// or https:// URL';
+      }
     }
     if (formData.settings.customCSS) {
       try {
@@ -417,17 +431,48 @@ export const WidgetManager: React.FC = () => {
           {formData.type === 'url' && (
             <div className="form-group">
               <label>Initial URL:</label>
-              <input
-                type="url"
-                value={formData.settings.initialUrl || ''}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  settings: { ...formData.settings, initialUrl: e.target.value }
-                })}
-                placeholder="Enter URL (e.g., https://google.com)"
-                disabled={isLoading}
-              />
-              <span className="help-text">The webpage to display in the widget</span>
+              <div className="url-input-container">
+                <input
+                  type="url"
+                  value={formData.settings.initialUrl || ''}
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, initialUrl: url }
+                    });
+                    // Clear error if URL becomes valid
+                    if (validateUrl(url) && error?.includes('URL')) {
+                      setError(null);
+                    }
+                  }}
+                  placeholder="Enter URL (e.g., https://google.com)"
+                  disabled={isLoading}
+                  className={error?.includes('URL') ? 'error' : ''}
+                />
+                {formData.settings.initialUrl && (
+                  <button
+                    className="preview-button"
+                    onClick={() => {
+                      if (validateUrl(formData.settings.initialUrl!)) {
+                        window.open(formData.settings.initialUrl, '_blank', 'width=800,height=600');
+                      } else {
+                        setError('Please enter a valid URL before previewing');
+                      }
+                    }}
+                    disabled={isLoading || !validateUrl(formData.settings.initialUrl)}
+                  >
+                    Preview
+                  </button>
+                )}
+              </div>
+              <span className="help-text">
+                {error?.includes('URL') ? (
+                  <span className="error-text">{error}</span>
+                ) : (
+                  'The webpage to display in the widget'
+                )}
+              </span>
             </div>
           )}
 
