@@ -13,6 +13,58 @@ interface WidgetFormData {
   };
 }
 
+interface WidgetTypeInfo {
+  type: WidgetType;
+  label: string;
+  description: string;
+  defaultSize: { width: number; height: number };
+  icon: string;
+  settings?: string[];
+}
+
+const WIDGET_TYPES: WidgetTypeInfo[] = [
+  {
+    type: 'clock',
+    label: 'Clock Widget',
+    description: 'Displays current time in various formats',
+    defaultSize: { width: 200, height: 100 },
+    icon: '🕐',
+    settings: ['format', 'timezone']
+  },
+  {
+    type: 'weather',
+    label: 'Weather Widget',
+    description: 'Shows weather information for your location',
+    defaultSize: { width: 300, height: 200 },
+    icon: '🌤️',
+    settings: ['location', 'unit']
+  },
+  {
+    type: 'notes',
+    label: 'Notes Widget',
+    description: 'Quick access notepad for your thoughts',
+    defaultSize: { width: 250, height: 300 },
+    icon: '📝',
+    settings: ['fontSize', 'theme']
+  },
+  {
+    type: 'calendar',
+    label: 'Calendar Widget',
+    description: 'View and manage your calendar events',
+    defaultSize: { width: 400, height: 300 },
+    icon: '📅',
+    settings: ['view', 'source']
+  },
+  {
+    type: 'url',
+    label: 'Web Widget',
+    description: 'Embed any website as a widget',
+    defaultSize: { width: 400, height: 400 },
+    icon: '🌐',
+    settings: ['initialUrl', 'refresh']
+  }
+];
+
 export const WidgetManager: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
@@ -54,7 +106,48 @@ export const WidgetManager: React.FC = () => {
     }
   };
 
+  const handleTypeChange = (type: WidgetType) => {
+    const typeInfo = WIDGET_TYPES.find(t => t.type === type);
+    if (typeInfo) {
+      setFormData({
+        ...formData,
+        type,
+        size: typeInfo.defaultSize,
+        settings: {
+          ...formData.settings,
+          initialUrl: type === 'url' ? formData.settings.initialUrl || 'https://duckduckgo.com/' : undefined
+        }
+      });
+    }
+  };
+
+  const validateForm = (): string | null => {
+    if (formData.size.width < 50 || formData.size.height < 50) {
+      return 'Widget size must be at least 50x50 pixels';
+    }
+    if (formData.settings.opacity < 0.1 || formData.settings.opacity > 1) {
+      return 'Opacity must be between 0.1 and 1';
+    }
+    if (formData.type === 'url' && !formData.settings.initialUrl) {
+      return 'URL is required for web widgets';
+    }
+    if (formData.settings.customCSS) {
+      try {
+        JSON.parse(formData.settings.customCSS);
+      } catch {
+        return 'Custom CSS must be a valid JSON object';
+      }
+    }
+    return null;
+  };
+
   const handleAddWidget = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -64,15 +157,12 @@ export const WidgetManager: React.FC = () => {
       const newWidget = await window.electron.invoke('widget:add', {
         type: formData.type,
         position: { x: 0, y: 0 }, // Default position
-        size: {
-          width: formData.size.width,
-          height: formData.size.height
-        },
+        size: formData.size,
         settings: {
           isAlwaysOnTop: formData.settings.isAlwaysOnTop,
           opacity: formData.settings.opacity,
           customCSS: formData.settings.customCSS,
-          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
+          ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
         }
       });
       setWidgets([...widgets, newWidget]);
@@ -87,6 +177,12 @@ export const WidgetManager: React.FC = () => {
   };
 
   const handleUpdateWidget = async (id: string) => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -96,15 +192,12 @@ export const WidgetManager: React.FC = () => {
       const updatedWidget = await window.electron.invoke('widget:update', {
         id,
         updates: {
-          size: {
-            width: formData.size.width,
-            height: formData.size.height
-          },
+          size: formData.size,
           settings: {
             isAlwaysOnTop: formData.settings.isAlwaysOnTop,
             opacity: formData.settings.opacity,
             customCSS: formData.settings.customCSS,
-            ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl || 'https://duckduckgo.com/' })
+            ...(formData.type === 'url' && { initialUrl: formData.settings.initialUrl })
           }
         }
       });
@@ -191,10 +284,7 @@ export const WidgetManager: React.FC = () => {
               setSelectedWidget(null);
               setFormData({
                 type: 'clock',
-                size: {
-                  width: defaultWidgetConfig.size!.width,
-                  height: defaultWidgetConfig.size!.height
-                },
+                size: WIDGET_TYPES[0].defaultSize,
                 settings: {
                   isAlwaysOnTop: false,
                   opacity: 1,
@@ -218,15 +308,21 @@ export const WidgetManager: React.FC = () => {
           </div>
         ) : (
           <div className="widget-grid">
-            {widgets.map(widget => (
-              <div key={widget.id} className="widget-item">
-                <h4>{widget.type}</h4>
-                <div className="widget-actions">
-                  <button onClick={() => handleEditWidget(widget)}>Edit</button>
-                  <button onClick={() => handleRemoveWidget(widget.id)}>Remove</button>
+            {widgets.map(widget => {
+              const typeInfo = WIDGET_TYPES.find(t => t.type === widget.type);
+              return (
+                <div key={widget.id} className={`widget-item ${selectedWidget === widget.id ? 'selected' : ''}`}>
+                  <div className="widget-info">
+                    <span className="widget-type">{typeInfo?.icon} {typeInfo?.label || widget.type}</span>
+                    <span className="widget-size">{widget.size.width}×{widget.size.height}</span>
+                  </div>
+                  <div className="widget-actions">
+                    <button onClick={() => handleEditWidget(widget)}>Edit</button>
+                    <button onClick={() => handleRemoveWidget(widget.id)}>Remove</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -234,76 +330,76 @@ export const WidgetManager: React.FC = () => {
       {isEditing && (
         <div className="widget-form">
           <h3>{selectedWidget ? 'Edit Widget' : 'Add New Widget'}</h3>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            selectedWidget ? handleUpdateWidget(selectedWidget) : handleAddWidget();
-          }}>
-            {!selectedWidget && (
-              <div className="form-group">
-                <label>Type:</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    type: e.target.value as WidgetType
-                  })}
-                  disabled={isLoading}
-                >
-                  <option value="clock">Clock</option>
-                  <option value="weather">Weather</option>
-                  <option value="notes">Notes</option>
-                  <option value="calendar">Calendar</option>
-                  <option value="url">URL</option>
-                </select>
-              </div>
-            )}
-
+          
+          {!selectedWidget && (
             <div className="form-group">
-              <label>Size:</label>
-              <div className="size-inputs">
-                <input
-                  type="number"
-                  min="50"
-                  max="2000"
-                  value={formData.size.width}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    size: { ...formData.size, width: Number(e.target.value) }
-                  })}
-                  disabled={isLoading}
-                />
-                <span>×</span>
-                <input
-                  type="number"
-                  min="50"
-                  max="2000"
-                  value={formData.size.height}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    size: { ...formData.size, height: Number(e.target.value) }
-                  })}
-                  disabled={isLoading}
-                />
+              <label>Widget Type:</label>
+              <div className="widget-type-grid">
+                {WIDGET_TYPES.map(typeInfo => (
+                  <button
+                    key={typeInfo.type}
+                    className={`widget-type-button ${formData.type === typeInfo.type ? 'selected' : ''}`}
+                    onClick={() => handleTypeChange(typeInfo.type)}
+                    disabled={isLoading}
+                  >
+                    <span className="widget-type-icon">{typeInfo.icon}</span>
+                    <span className="widget-type-label">{typeInfo.label}</span>
+                    <span className="widget-type-description">{typeInfo.description}</span>
+                  </button>
+                ))}
               </div>
             </div>
+          )}
 
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={formData.settings.isAlwaysOnTop}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    settings: { ...formData.settings, isAlwaysOnTop: e.target.checked }
-                  })}
-                  disabled={isLoading}
-                />
-                Always on Top
-              </label>
+          <div className="form-group">
+            <label>Size:</label>
+            <div className="size-inputs">
+              <input
+                type="number"
+                min="50"
+                max="2000"
+                value={formData.size.width}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  size: { ...formData.size, width: Number(e.target.value) }
+                })}
+                disabled={isLoading}
+              />
+              <span>×</span>
+              <input
+                type="number"
+                min="50"
+                max="2000"
+                value={formData.size.height}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  size: { ...formData.size, height: Number(e.target.value) }
+                })}
+                disabled={isLoading}
+              />
             </div>
+            <span className="help-text">Minimum size: 50×50 pixels</span>
+          </div>
 
-            <div className="form-group">
-              <label>Opacity:</label>
+          <div className="form-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={formData.settings.isAlwaysOnTop}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  settings: { ...formData.settings, isAlwaysOnTop: e.target.checked }
+                })}
+                disabled={isLoading}
+              />
+              Always on Top
+            </label>
+            <span className="help-text">Keep widget above other windows</span>
+          </div>
+
+          <div className="form-group">
+            <label>Opacity:</label>
+            <div className="opacity-control">
               <input
                 type="range"
                 min="0.1"
@@ -318,61 +414,65 @@ export const WidgetManager: React.FC = () => {
               />
               <span>{(formData.settings.opacity * 100).toFixed(0)}%</span>
             </div>
+            <span className="help-text">Adjust widget transparency</span>
+          </div>
 
+          {formData.type === 'url' && (
             <div className="form-group">
-              <label>Custom CSS:</label>
-              <textarea
-                value={formData.settings.customCSS}
+              <label>Initial URL:</label>
+              <input
+                type="url"
+                value={formData.settings.initialUrl || ''}
                 onChange={(e) => setFormData({
                   ...formData,
-                  settings: { ...formData.settings, customCSS: e.target.value }
+                  settings: { ...formData.settings, initialUrl: e.target.value }
                 })}
-                placeholder="Enter custom CSS rules..."
+                placeholder="Enter URL (e.g., https://google.com)"
                 disabled={isLoading}
               />
+              <span className="help-text">The webpage to display in the widget</span>
             </div>
+          )}
 
-            {formData.type === 'url' && (
-              <div className="form-group">
-                <label>Initial URL:</label>
-                <input
-                  type="url"
-                  value={formData.settings.initialUrl || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    settings: { ...formData.settings, initialUrl: e.target.value }
-                  })}
-                  placeholder="Enter URL (e.g., https://google.com)"
-                  disabled={isLoading}
-                /> 
-              </div>
-            )}
-
-            <div className="form-actions">
-              <button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <span>
-                    <span className="loading-spinner small" />
-                    {selectedWidget ? 'Updating...' : 'Adding...'}
-                  </span>
-                ) : (
-                  selectedWidget ? 'Update Widget' : 'Add Widget'
-                )}
-              </button>
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => {
-                  setIsEditing(false);
-                  setSelectedWidget(null);
-                  setError(null);
-                }}
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
+          <div className="form-group">
+            <label>Custom CSS:</label>
+            <textarea
+              value={formData.settings.customCSS}
+              onChange={(e) => setFormData({
+                ...formData,
+                settings: { ...formData.settings, customCSS: e.target.value }
+              })}
+              placeholder="Enter custom CSS as a JSON object..."
+              disabled={isLoading}
+            />
+            <div className="help-text">
+              <p>Custom styles in JSON format. Example:</p>
+              <pre>{`{
+  "backgroundColor": "#f0f0f0",
+  "borderRadius": "8px",
+  "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"
+}`}</pre>
             </div>
-          </form>
+          </div>
+
+          <div className="form-actions">
+            <button
+              onClick={() => selectedWidget ? handleUpdateWidget(selectedWidget) : handleAddWidget()}
+              disabled={isLoading}
+            >
+              {selectedWidget ? 'Update Widget' : 'Add Widget'}
+            </button>
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setSelectedWidget(null);
+                setError(null);
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

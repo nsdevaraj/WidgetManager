@@ -85,6 +85,7 @@
   border-radius: 6px;
   padding: 16px;
   transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
 }
 
 .widget-item:hover {
@@ -92,10 +93,29 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.widget-item h4 {
-  margin: 0 0 12px 0;
+.widget-item.selected {
+  border-color: #3498db;
+  background: #f1f8fe;
+}
+
+.widget-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.widget-type {
+  font-size: 1.1em;
   color: #2c3e50;
-  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-size {
+  font-size: 0.9em;
+  color: #7f8c8d;
 }
 
 .widget-actions {
@@ -110,6 +130,7 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-weight: 500;
 }
 
 .widget-actions button:first-child {
@@ -172,10 +193,180 @@
   color: #2c3e50;
 }
 
+.widget-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.widget-type-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.widget-type-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.widget-type-button.selected {
+  border-color: #3498db;
+  background: #f1f8fe;
+}
+
+.widget-type-icon {
+  font-size: 2em;
+  margin-bottom: 8px;
+}
+
+.widget-type-label {
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.widget-type-description {
+  font-size: 0.9em;
+  color: #7f8c8d;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.form-group input[type="checkbox"] + label {
+  display: inline;
+  margin-left: 8px;
+}
+
+.size-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.size-inputs input {
+  width: 80px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.size-inputs input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  background: #ddd;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #3498db;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: #2980b9;
+}
+
+input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+input[type="url"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: monospace;
+  resize: vertical;
+  margin-bottom: 4px;
+}
+
+textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.help-text {
+  font-size: 0.9em;
+  color: #7f8c8d;
+  margin-top: 4px;
+}
+
+.help-text pre {
+  background: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .form-actions button {
@@ -184,11 +375,13 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-weight: 500;
 }
 
 .form-actions button:first-child {
   background-color: #3498db;
   color: white;
+  flex: 2;
 }
 
 .form-actions button:first-child:hover {
@@ -198,138 +391,14 @@
 .form-actions button:last-child {
   background-color: #95a5a6;
   color: white;
+  flex: 1;
 }
 
 .form-actions button:last-child:hover {
   background-color: #7f8c8d;
 }
 
-.widget-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.widget-type {
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.widget-size {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.widget-item:hover {
-  border-color: var(--primary-color);
-}
-
-.widget-item.selected {
-  border-color: var(--primary-color);
-  background-color: var(--hover-color);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-group input[type="checkbox"] + label {
-  display: inline;
-  margin-left: 0.5rem;
-}
-
-.size-inputs {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.size-inputs input {
-  width: 80px;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.size-inputs input:disabled {
-  background-color: var(--disabled-bg-color);
+.form-actions button:disabled {
+  background-color: #bdc3c7;
   cursor: not-allowed;
-}
-
-select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background-color: white;
-}
-
-select:disabled {
-  background-color: var(--disabled-bg-color);
-  cursor: not-allowed;
-}
-
-input[type="range"] {
-  width: 100%;
-  margin: 0.5rem 0;
-}
-
-input[type="range"]:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: monospace;
-  resize: vertical;
-}
-
-textarea:disabled {
-  background-color: var(--disabled-bg-color);
-  cursor: not-allowed;
-}
-
-.help-text {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.help-text ul {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-  list-style-type: disc;
-}
-
-.help-text ul:last-child {
-  margin-bottom: 0;
-}
-
-.help-text li {
-  margin: 0.25rem 0;
-}
-
-.help-text code {
-  font-family: monospace;
-  background-color: var(--hover-color);
-  padding: 0.2rem 0.4rem;
-  border-radius: 3px;
-  font-size: 0.9em;
-  color: var(--text-color);
 } 
