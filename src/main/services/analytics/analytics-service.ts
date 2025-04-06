@@ -1,7 +1,6 @@
-import * as Sentry from '@sentry/electron';
-import mixpanel from 'mixpanel-browser';
 import { app } from 'electron';
-import Store from 'electron-store';
+const Store = require('electron-store');
+import * as Sentry from '@sentry/electron/main';
 
 interface AnalyticsStore {
     'analytics.enabled': boolean;
@@ -9,12 +8,12 @@ interface AnalyticsStore {
 }
 
 export class AnalyticsService {
-    private store: Store<AnalyticsStore>;
+    private store: any;
     private isEnabled: boolean;
     private userId: string;
 
     constructor() {
-        this.store = new Store<AnalyticsStore>({
+        this.store = new Store({
             defaults: {
                 'analytics.enabled': true,
                 'analytics.userId': '',
@@ -29,11 +28,10 @@ export class AnalyticsService {
         }
 
         this.initializeSentry();
-        this.initializeMixpanel();
     }
 
     private generateUserId(): string {
-        return `user_${Math.random().toString(36).substr(2, 9)}`;
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
 
     private initializeSentry() {
@@ -41,49 +39,32 @@ export class AnalyticsService {
             Sentry.init({
                 dsn: process.env.SENTRY_DSN,
                 release: app.getVersion(),
-                beforeSend(event) {
+                beforeSend(event: any) {
                     // Scrub any sensitive data if needed
                     return event;
                 },
             });
 
             // Set user ID as a tag
-            Sentry.configureScope(scope => {
-                scope.setTag('userId', this.userId);
-            });
-        }
-    }
-
-    private initializeMixpanel() {
-        if (this.isEnabled && process.env.MIXPANEL_TOKEN) {
-            mixpanel.init(process.env.MIXPANEL_TOKEN, {
-                debug: process.env.NODE_ENV === 'development',
-            });
-            
-            mixpanel.identify(this.userId);
+            Sentry.setTag('userId', this.userId);
         }
     }
 
     public trackEvent(eventName: string, properties: Record<string, any> = {}) {
         if (this.isEnabled) {
-            mixpanel.track(eventName, {
-                ...properties,
-                app_version: app.getVersion(),
-                platform: process.platform,
-            });
+            // TODO: Implement actual analytics tracking
+            console.log('Tracking event:', eventName, properties);
         }
     }
 
     public captureError(error: Error, context: Record<string, any> = {}) {
         if (this.isEnabled) {
-            Sentry.configureScope(scope => {
-                scope.setExtras({
-                    ...context,
-                    app_version: app.getVersion(),
-                    platform: process.platform,
-                });
-                Sentry.captureException(error);
+            Sentry.setExtras({
+                ...context,
+                app_version: app.getVersion(),
+                platform: process.platform,
             });
+            Sentry.captureException(error);
         }
     }
 
@@ -93,11 +74,6 @@ export class AnalyticsService {
 
         if (!enabled) {
             // Properly handle disabling analytics
-            mixpanel.reset();
-            // Note: Sentry doesn't need to be "closed" in the same way
-        } else {
-            this.initializeSentry();
-            this.initializeMixpanel();
         }
     }
 

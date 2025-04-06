@@ -1,45 +1,53 @@
 import { BrowserWindow, app } from 'electron';
-import Store from 'electron-store';
-import path from 'path';
+const Store = require('electron-store');
+const path = require('path');
 import { analyticsService } from '../analytics/analytics-service';
+
+declare const __dirname: string;
 
 interface OnboardingStore {
     'onboarding.completed': boolean;
-    'onboarding.lastVersion': string;
+    'onboarding.skipped': boolean;
+    'onboarding.lastVersion': string | null;
 }
 
 export class OnboardingService {
-    private store: Store<OnboardingStore>;
+    private store: any;
     private onboardingWindow: BrowserWindow | null = null;
 
     constructor() {
-        this.store = new Store<OnboardingStore>({
+        this.store = new Store({
             defaults: {
                 'onboarding.completed': false,
-                'onboarding.lastVersion': '',
+                'onboarding.skipped': false,
+                'onboarding.lastVersion': null,
             }
         });
     }
 
-    public async checkAndShowOnboarding() {
+    public async checkAndShowOnboarding(): Promise<void> {
         const isFirstRun = !this.store.get('onboarding.completed');
         const lastVersion = this.store.get('onboarding.lastVersion');
         const currentVersion = app.getVersion();
         const isNewVersion = lastVersion !== currentVersion;
 
-        if (isFirstRun || isNewVersion) {
-            analyticsService.trackEvent('onboarding_started', {
+        if (isFirstRun || (isNewVersion && !this.store.get('onboarding.skipped'))) {
+            analyticsService.trackEvent('onboarding_check', {
                 is_first_run: isFirstRun,
                 is_new_version: isNewVersion,
-                previous_version: lastVersion,
                 current_version: currentVersion,
+                last_version: lastVersion
             });
 
-            await this.showOnboardingWindow();
+            this.showOnboarding();
         }
     }
 
-    private async showOnboardingWindow() {
+    public shouldShowOnboarding(): boolean {
+        return !this.store.get('onboarding.completed') && !this.store.get('onboarding.skipped');
+    }
+
+    public showOnboarding() {
         if (this.onboardingWindow) {
             this.onboardingWindow.focus();
             return;
@@ -49,23 +57,18 @@ export class OnboardingService {
             width: 800,
             height: 600,
             webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                preload: path.join(__dirname, 'onboarding-preload.js'),
+                nodeIntegration: true,
+                contextIsolation: false,
             },
-            frame: false,
-            transparent: true,
-            resizable: false,
-            center: true,
             show: false,
         });
 
-        // Load the onboarding HTML file
-        await this.onboardingWindow.loadFile(path.join(__dirname, 'onboarding.html'));
+        this.onboardingWindow.loadFile(path.join(__dirname, '../../renderer/onboarding.html'));
 
         this.onboardingWindow.once('ready-to-show', () => {
             if (this.onboardingWindow) {
                 this.onboardingWindow.show();
+                analyticsService.trackEvent('onboarding_shown');
             }
         });
 
@@ -75,32 +78,20 @@ export class OnboardingService {
     }
 
     public completeOnboarding() {
-        const currentVersion = app.getVersion();
         this.store.set('onboarding.completed', true);
-        this.store.set('onboarding.lastVersion', currentVersion);
-
-        analyticsService.trackEvent('onboarding_completed', {
-            version: currentVersion,
-        });
-
+        this.store.set('onboarding.lastVersion', app.getVersion());
+        analyticsService.trackEvent('onboarding_completed');
         if (this.onboardingWindow) {
             this.onboardingWindow.close();
-            this.onboardingWindow = null;
         }
     }
 
     public skipOnboarding() {
-        const currentVersion = app.getVersion();
-        this.store.set('onboarding.completed', true);
-        this.store.set('onboarding.lastVersion', currentVersion);
-
-        analyticsService.trackEvent('onboarding_skipped', {
-            version: currentVersion,
-        });
-
+        this.store.set('onboarding.skipped', true);
+        this.store.set('onboarding.lastVersion', app.getVersion());
+        analyticsService.trackEvent('onboarding_skipped');
         if (this.onboardingWindow) {
             this.onboardingWindow.close();
-            this.onboardingWindow = null;
         }
     }
 }

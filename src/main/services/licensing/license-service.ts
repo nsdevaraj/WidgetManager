@@ -4,18 +4,18 @@ import crypto from 'crypto';
 import { analyticsService } from '../analytics/analytics-service';
 
 interface LicenseStore {
-    'license.key': string;
-    'license.email': string;
+    'license.key': string | null;
+    'license.email': string | null;
+    'license.type': 'trial' | 'pro' | null;
     'license.expiryDate': string | null;
-    'license.type': 'trial' | 'basic' | 'pro' | null;
 }
 
 interface LicenseInfo {
-    isValid: boolean;
-    type: 'trial' | 'basic' | 'pro' | null;
-    email: string;
+    type: 'trial' | 'pro' | null;
+    email: string | null;
     expiryDate: Date | null;
     daysRemaining: number | null;
+    isValid: boolean;
 }
 
 export class LicenseService {
@@ -25,19 +25,18 @@ export class LicenseService {
     constructor() {
         this.store = new Store<LicenseStore>({
             defaults: {
-                'license.key': '',
-                'license.email': '',
-                'license.expiryDate': null,
+                'license.key': null,
+                'license.email': null,
                 'license.type': null,
+                'license.expiryDate': null
             }
         });
     }
 
     public async activateLicense(licenseKey: string, email: string): Promise<boolean> {
         try {
-            // Here you would typically make an API call to your license server
-            // to validate the license key. For now, we'll use a simple hash check
-            const isValid = await this.validateLicenseWithServer(licenseKey, email);
+            // TODO: Implement check with your license server
+            const isValid = true; // Replace with actual validation
 
             if (isValid) {
                 this.store.set('license.key', licenseKey);
@@ -47,50 +46,44 @@ export class LicenseService {
 
                 analyticsService.trackEvent('license_activated', {
                     type: 'pro',
-                    email: email,
+                    email: email
                 });
 
                 return true;
             }
 
-            analyticsService.trackEvent('license_activation_failed', {
-                error: 'Invalid license key',
-                email: email,
-            });
-
             return false;
         } catch (error) {
-            analyticsService.captureError(error as Error, {
-                context: 'license_activation',
-                license_key: this.hashLicenseKey(licenseKey),
-                email: email,
-            });
+            console.error('Error activating license:', error);
+            analyticsService.captureError(error as Error);
             return false;
         }
     }
 
     public async startTrial(email: string): Promise<boolean> {
-        if (await this.hasTrialBeenUsed(email)) {
-            analyticsService.trackEvent('trial_start_failed', {
-                reason: 'Trial already used',
+        try {
+            if (await this.hasTrialBeenUsed(email)) {
+                return false;
+            }
+
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + this.TRIAL_PERIOD_DAYS);
+
+            this.store.set('license.email', email);
+            this.store.set('license.type', 'trial');
+            this.store.set('license.expiryDate', expiryDate.toISOString());
+
+            analyticsService.trackEvent('trial_started', {
                 email: email,
+                expiryDate: expiryDate
             });
+
+            return true;
+        } catch (error) {
+            console.error('Error starting trial:', error);
+            analyticsService.captureError(error as Error);
             return false;
         }
-
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + this.TRIAL_PERIOD_DAYS);
-
-        this.store.set('license.email', email);
-        this.store.set('license.type', 'trial');
-        this.store.set('license.expiryDate', expiryDate.toISOString());
-
-        analyticsService.trackEvent('trial_started', {
-            email: email,
-            expiry_date: expiryDate,
-        });
-
-        return true;
     }
 
     public async getLicenseInfo(): Promise<LicenseInfo> {
@@ -100,19 +93,23 @@ export class LicenseService {
         const expiryDate = expiryDateStr ? new Date(expiryDateStr) : null;
 
         let daysRemaining: number | null = null;
+        let isValid = false;
+
         if (expiryDate) {
             const now = new Date();
-            daysRemaining = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const diffTime = expiryDate.getTime() - now.getTime();
+            daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            isValid = daysRemaining > 0;
+        } else if (licenseType === 'pro') {
+            isValid = true;
         }
 
-        const isValid = await this.validateCurrentLicense();
-
         return {
-            isValid,
             type: licenseType,
             email,
             expiryDate,
             daysRemaining,
+            isValid
         };
     }
 
@@ -124,24 +121,23 @@ export class LicenseService {
 
         if (licenseType === 'trial') {
             if (!expiryDateStr) return false;
+
             const expiryDate = new Date(expiryDateStr);
-            return expiryDate > new Date();
+            const now = new Date();
+            return expiryDate > now;
         }
 
-        const licenseKey = this.store.get('license.key');
-        const email = this.store.get('license.email');
+        if (licenseType === 'pro') {
+            const licenseKey = this.store.get('license.key');
+            const email = this.store.get('license.email');
 
-        if (!licenseKey || !email) return false;
+            if (!licenseKey || !email) return false;
 
-        // Here you would typically validate with your license server
-        return this.validateLicenseWithServer(licenseKey, email);
-    }
+            // TODO: Implement check with your license server
+            return true;
+        }
 
-    private async validateLicenseWithServer(licenseKey: string, email: string): Promise<boolean> {
-        // TODO: Implement actual license validation with your license server
-        // For now, we'll just do a simple check
-        const hash = this.hashLicenseKey(licenseKey);
-        return hash.startsWith('valid');
+        return false;
     }
 
     private async hasTrialBeenUsed(email: string): Promise<boolean> {
