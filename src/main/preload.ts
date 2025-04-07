@@ -85,7 +85,7 @@ const api: ElectronAPI = {
   },
 
   // Resource monitoring
-  getWidgetMetrics: (widgetId: string) => ipcRenderer.invoke('widget:get-metrics', widgetId),
+  getWidgetMetrics: (widgetId: string) => ipcRenderer.invoke(`widget:${widgetId}:get-metrics`, widgetId),
   onMetricsUpdate: (callback: (event: IpcRendererEvent, metrics: WidgetResourceMetrics) => void) => {
     ipcRenderer.on('widget:metrics-update', callback);
   },
